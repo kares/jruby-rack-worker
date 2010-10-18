@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author kares <self_AT_kares_DOT_org>
  */
-class WorkerThreadFactory implements ThreadFactory {
+public class WorkerThreadFactory implements ThreadFactory {
 
     static final AtomicInteger threadCount = new AtomicInteger(1);
 
@@ -34,7 +34,7 @@ class WorkerThreadFactory implements ThreadFactory {
 
     private final ThreadGroup group;
 
-    WorkerThreadFactory(final String prefix, final int priority) {
+    public WorkerThreadFactory(final String prefix, final int priority) {
         this.priority = priority;
         this.prefix = ( prefix == null || prefix.length() == 0 ) ? "" : prefix + '-';
         final SecurityManager securityManager = System.getSecurityManager();

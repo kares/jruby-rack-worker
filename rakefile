@@ -1,0 +1,113 @@
+
+PROJECT_NAME = 'jruby-rack-worker'
+PROJECT_VERSION = '0.1'
+
+SRC_DIR = 'src'
+MAIN_SRC_DIR = File.join(SRC_DIR, 'main/java')
+TEST_SRC_DIR = File.join(SRC_DIR, 'test/java')
+OUT_DIR = 'out'
+MAIN_BUILD_DIR = File.join(OUT_DIR, 'classes')
+TEST_BUILD_DIR = File.join(OUT_DIR, 'test-classes')
+TEST_RESULTS_DIR = File.join(OUT_DIR, 'test-results')
+LIB_DIR = 'lib'
+
+require 'ant'
+ant.property :name => "ivy.lib.dir", :value => LIB_DIR
+
+namespace :ivy do
+
+  ivy_version = '2.1.0'
+  ivy_jar_dir = File.join(LIB_DIR, 'build')
+  ivy_jar_file = File.join(ivy_jar_dir, 'ivy.jar')
+
+  task :download do
+    mkdir_p ivy_jar_dir
+    ant.get :src => "http://repo1.maven.org/maven2/org/apache/ivy/ivy/#{ivy_version}/ivy-#{ivy_version}.jar",
+      :dest => ivy_jar_file,
+      :usetimestamp => true
+  end
+
+  task :install => :download do
+    ant.path :id => 'ivy.lib.path' do
+      fileset :dir => ivy_jar_dir, :includes => '*.jar'
+    end
+    ant.taskdef :resource => "org/apache/ivy/ant/antlib.xml", :classpathref => "ivy.lib.path"
+  end
+  
+end
+
+task :retrieve => :"ivy:install" do
+  ant.retrieve :pattern => "${ivy.lib.dir}/[conf]/[artifact].[type]"
+end
+
+ant.path :id => "main.class.path" do
+  fileset :dir => LIB_DIR do
+    include :name => 'runtime/*.jar'
+  end
+end
+ant.path :id => "test.class.path" do
+  fileset :dir => LIB_DIR do
+    include :name => 'test/*.jar'
+  end
+end
+
+task :compile => :retrieve do
+  mkdir_p MAIN_BUILD_DIR
+  ant.javac :destdir => MAIN_BUILD_DIR, :source => '1.5' do
+    src :path => MAIN_SRC_DIR
+    classpath :refid => "main.class.path"
+  end
+end
+
+task :jar => :compile do
+  ant.jar :destfile => "#{OUT_DIR}/#{PROJECT_NAME}_#{PROJECT_VERSION}.jar", :basedir => MAIN_BUILD_DIR do
+    manifest do
+      attribute :name => "Built-By", :value => "${user.name}"
+      attribute :name => "Implementation-Title", :value => PROJECT_NAME
+      attribute :name => "Implementation-Version", :value => PROJECT_VERSION
+      attribute :name => "Implementation-Vendor", :value => "Karol Bucek"
+      attribute :name => "Implementation-Vendor-Id", :value => "org.kares"
+    end
+  end
+end
+
+task 'test:compile' => :compile do
+  mkdir_p TEST_BUILD_DIR
+  ant.javac :destdir => TEST_BUILD_DIR, :source => '1.5' do
+    src :path => TEST_SRC_DIR
+    classpath :refid => "main.class.path"
+    classpath :refid => "test.class.path"
+    classpath { pathelement :path => MAIN_BUILD_DIR }
+  end
+end
+
+task :test => 'test:compile' do
+  mkdir_p TEST_RESULTS_DIR
+  ant.junit :fork => true,
+            :haltonfailure => false,
+            :haltonerror => true,
+            :showoutput => true,
+            :printsummary => true do
+
+    classpath :refid => "main.class.path"
+    classpath :refid => "test.class.path"
+    classpath do
+      pathelement :path => MAIN_BUILD_DIR
+      pathelement :path => TEST_BUILD_DIR
+    end
+
+    formatter :type => "xml"
+
+    batchtest :fork => "yes", :todir => TEST_RESULTS_DIR do
+      fileset :dir => TEST_SRC_DIR do
+        include :name => "**/*Test.java"
+      end
+    end
+  end
+end
+
+task :clean do
+  rm_rf OUT_DIR
+end
+
+task :default => [ :jar ]
