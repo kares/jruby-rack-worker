@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ivy-module version="2.0">
-    <info organisation="org.kares.jruby.servlet" module="delayed_job_servlet_worker"/>
+    <info organisation="org.kares.jruby.rack" module="jruby_rack_worker"/>
     <configurations>
         <conf name="build" description="Libraries needed for compilation"/>
         <conf name="runtime" extends="build" description="Libraries that need to be included with project jar" />

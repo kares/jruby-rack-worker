@@ -23,25 +23,25 @@ import java.util.concurrent.ThreadFactory;
 /**
  * @author kares <self_AT_kares_DOT_org>
  */
-public class MemoThreadFactory implements ThreadFactory {
+class MemoThreadFactory implements ThreadFactory {
 
     private final ThreadFactory delegate;
     
-    final List<Thread> newThreads;
+    final List<Thread> returnedThreads;
 
-    MemoThreadFactory(final ThreadFactory delegate) {
+    MemoThreadFactory(ThreadFactory delegate) {
         this.delegate = delegate;
-        this.newThreads = new ArrayList<Thread>();
+        this.returnedThreads = new ArrayList<Thread>();
     }
 
-    MemoThreadFactory(final ThreadFactory delegate, final List<Thread> newThreads) {
+    MemoThreadFactory(ThreadFactory delegate, List<Thread> returnedThreads) {
         this.delegate = delegate;
-        this.newThreads = newThreads;
+        this.returnedThreads = returnedThreads;
     }
 
     public Thread newThread(Runnable runnable) {
         Thread thread = delegate.newThread(runnable);
-        newThreads.add( thread );
+        returnedThreads.add( thread );
         return thread;
     }
 
