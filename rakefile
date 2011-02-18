@@ -1,6 +1,6 @@
 
 PROJECT_NAME = 'jruby-rack-worker'
-PROJECT_VERSION = '0.1'
+PROJECT_VERSION = File.read('version')
 
 SRC_DIR = 'src'
 MAIN_SRC_DIR = File.join(SRC_DIR, 'main/java')
@@ -10,6 +10,10 @@ MAIN_BUILD_DIR = File.join(OUT_DIR, 'classes')
 TEST_BUILD_DIR = File.join(OUT_DIR, 'test-classes')
 TEST_RESULTS_DIR = File.join(OUT_DIR, 'test-results')
 LIB_DIR = 'lib'
+
+unless defined?(JRUBY_VERSION)
+  raise "Hey, we're not running within JRuby my dear !"
+end
 
 require 'ant'
 ant.property :name => "ivy.lib.dir", :value => LIB_DIR
