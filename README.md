@@ -42,12 +42,20 @@ executed (should be an "endless" loop-ing script). Sample configuration :
 
     <context-param>
       <param-name>jruby.worker.script</param-name>
-      <param-value>require 'delayed/worker'; Delayed::Worker.new.start</param-value>
+      <param-value>
+        require 'delayed/jruby_worker'
+        Delayed::JRubyWorker.new.start
+      </param-value>
     </context-param>
 
     <listener>
       <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
     </listener>
+
+*NOTE*: Script loading from WEB-INF/lib/*.jar files is not working thus make sure
+(in case of the above example) that You copy all Your .rb files to the load path
+(e.g. in case of the above example copy `src/main/ruby/delayed/jruby_worker.rb`
+to `RAILS_ROOT/lib/delayed/jruby_worker.rb` ) ...
 
 *NOTE*: The `WorkerContextListener` needs to be executed (and thus configured)
 after the `RailsServletContextListener`/`RackServletContextListener` as it expects
@@ -73,7 +81,7 @@ The build is performed by [http://rake.rubyforge.org/](rake) which should be par
 of Your JRuby installation, if You're experiencing conflicts with another Ruby and
 it's rake executable use `jruby -S rake` instead of the bare `rake` command.
 
-Build the `jruby-worker.jar` using :
+Build the `jruby-rack-worker.jar` using :
 
     rake jar
 

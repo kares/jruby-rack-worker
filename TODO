@@ -1,0 +1,7 @@
+ 1. .rb script loading from .jar does not work (WEB-INF/lib jars seem to not be
+    on jruby-rack's the $LOADPATH) !
+ 2. Java's Thread.interrupt seems to be not affecting (J)Ruby code ...
+ 3. Container + Warbler Testing
+ 4. Make Tomcat (Trinidad) warnings go away :
+    SEVERE: The web application [/] appears to have started a thread named [worker_1]
+            but has failed to stop it. This is very likely to create a memory leak.
