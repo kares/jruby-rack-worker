@@ -4,11 +4,13 @@ PROJECT_VERSION = File.read('version')
 
 SRC_DIR = 'src'
 MAIN_SRC_DIR = File.join(SRC_DIR, 'main/java')
+RUBY_SRC_DIR = File.join(SRC_DIR, 'main/ruby')
 TEST_SRC_DIR = File.join(SRC_DIR, 'test/java')
 OUT_DIR = 'out'
 MAIN_BUILD_DIR = File.join(OUT_DIR, 'classes')
 TEST_BUILD_DIR = File.join(OUT_DIR, 'test-classes')
 TEST_RESULTS_DIR = File.join(OUT_DIR, 'test-results')
+RUBY_DEST_DIR_NAME = '' # 'META-INF/jruby_rack_worker'
 LIB_DIR = 'lib'
 
 unless defined?(JRUBY_VERSION)
@@ -63,7 +65,12 @@ task :compile => :retrieve do
   end
 end
 
-task :jar => :compile do
+task :copy_resources do
+  mkdir_p ruby_dest_dir = File.join(MAIN_BUILD_DIR, RUBY_DEST_DIR_NAME)
+  cp_r File.join(RUBY_SRC_DIR, '.'), ruby_dest_dir
+end
+
+task :jar => [ :compile, :copy_resources ] do
   ant.jar :destfile => "#{OUT_DIR}/#{PROJECT_NAME}_#{PROJECT_VERSION}.jar", :basedir => MAIN_BUILD_DIR do
     manifest do
       attribute :name => "Built-By", :value => "${user.name}"
@@ -75,7 +82,7 @@ task :jar => :compile do
   end
 end
 
-task 'test:compile' => :compile do
+task :'test:compile' => :compile do
   mkdir_p TEST_BUILD_DIR
   ant.javac :destdir => TEST_BUILD_DIR, :source => '1.5' do
     src :path => TEST_SRC_DIR
@@ -85,7 +92,7 @@ task 'test:compile' => :compile do
   end
 end
 
-task :test => 'test:compile' do
+task :test => :'test:compile' do
   mkdir_p TEST_RESULTS_DIR
   ant.junit :fork => true,
             :haltonfailure => false,

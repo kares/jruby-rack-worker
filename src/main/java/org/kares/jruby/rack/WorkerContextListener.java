@@ -61,7 +61,7 @@ public class WorkerContextListener implements ServletContextListener {
      *
      * <context-param>
      *   <param-name>jruby.worker.script.path</param-name>
-     *   <param-value>/lib/delayed/worker_loop.rb</param-value>
+     *   <param-value>lib/delayed/jruby_worker.rb</param-value>
      * </context-param>
      */
     public static final String SCRIPT_PATH_KEY = "jruby.worker.script.path";
@@ -93,7 +93,7 @@ public class WorkerContextListener implements ServletContextListener {
                     RackApplicationFactory.class.getName() + " not yet initialized - " +
                     "seems this listener is executing before the " +
                     RackServletContextListener.class.getName() + "/RailsSevletContextListener !";
-            context.log("ERROR[" + WorkerContextListener.class.getName() + "]: " + message);
+            context.log("[" + WorkerContextListener.class.getName() + "] ERROR: " + message);
             throw new IllegalStateException(message);
         }
 
@@ -101,7 +101,7 @@ public class WorkerContextListener implements ServletContextListener {
         if ( workerScript == null ) {
             final String message = "no worker script to execute - configure one using '" + SCRIPT_KEY + "' " +
                     "or '" + SCRIPT_PATH_KEY + "' context-param or see previous errors if already configured";
-            context.log("WARN[" + WorkerContextListener.class.getName() + "]: " + message);
+            context.log("[" + WorkerContextListener.class.getName() + "] WARN: " + message);
             return; //throw new IllegalStateException(message);
         }
 
@@ -118,29 +118,35 @@ public class WorkerContextListener implements ServletContextListener {
                 workerThread.start();
             }
             catch (RackInitializationException e) {
-                context.log("ERROR[" + WorkerContextListener.class.getName() + "]: get rack application failed", e);
+                context.log("[" + WorkerContextListener.class.getName() + "] ERROR: get rack application failed", e);
             }
         }
+        context.log("[" + WorkerContextListener.class.getName() + "] INFO : started " + workers.size() + " worker(s)");
     }
 
     /**
      * @param event
      */
     public void contextDestroyed(final ServletContextEvent event) {
+        final ServletContext context = event.getServletContext();
         //contextDestroyed = true;
         for ( final RubyWorker worker : workers.keySet() ) {
+            final Thread workerThread = workers.get(worker);
             try {
+                // JRuby seems to ignore Java's Interrupted arithmentic
+                // @see http://jira.codehaus.org/browse/JRUBY-4135
+                workerThread.interrupt();
+                workerThread.join();
                 worker.stop();
-                workers.get(worker).join();
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
             catch (Exception e) {
-                final ServletContext context = event.getServletContext();
-                context.log("WARN[" + WorkerContextListener.class.getName() + "]: ignoring exception", e);
+                context.log("[" + WorkerContextListener.class.getName() + "] WARN: ignoring exception", e);
             }
         }
+        context.log("[" + WorkerContextListener.class.getName() + "] INFO: stopped " + workers.size() + " worker(s)");
         workers.clear();
     }
 
@@ -158,7 +164,7 @@ public class WorkerContextListener implements ServletContextListener {
             if ( count != null ) return Integer.parseInt(count);
         }
         catch (NumberFormatException e) {
-            context.log("WARN[" + WorkerContextListener.class.getName() + "] " +
+            context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
                         "could not parse " + THREAD_COUNT_KEY + " parameter value = " + count, e);
         }
         return 1;
@@ -175,7 +181,7 @@ public class WorkerContextListener implements ServletContextListener {
             }
         }
         catch (NumberFormatException e) {
-            context.log("WARN[" + WorkerContextListener.class.getName() + "] " +
+            context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
                         "could not parse " + THREAD_PRIORITY_KEY + " parameter value = " + priority, e);
         }
         return Thread.NORM_PRIORITY;
@@ -194,7 +200,7 @@ public class WorkerContextListener implements ServletContextListener {
                 try {
                     int c = scriptStream.read();
                     Reader reader; String coding = "UTF-8";
-                    if (c == '#') {     // look for a coding: pragma
+                    if (c == '#') { // look for a coding: pragma
                         str.append((char) c);
                         while ((c = scriptStream.read()) != -1 && c != 10) {
                             str.append((char) c);
@@ -212,7 +218,7 @@ public class WorkerContextListener implements ServletContextListener {
                     }
                 }
                 catch (Exception e) {
-                    context.log("ERROR[" + WorkerContextListener.class.getName() + "] " +
+                    context.log("[" + WorkerContextListener.class.getName() + "] ERROR: " +
                                 "error reading script: '" + script + "'", e);
                     return null;
                 }
@@ -238,7 +244,8 @@ public class WorkerContextListener implements ServletContextListener {
         }
 
         public void stop() {
-            JavaEmbedUtils.terminate(runtime);
+            // jruby-rack manages the runtimes thus let it terminate !
+            //JavaEmbedUtils.terminate(runtime);
         }
 
     }

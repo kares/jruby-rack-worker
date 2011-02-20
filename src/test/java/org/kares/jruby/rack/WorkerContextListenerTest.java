@@ -55,7 +55,7 @@ public class WorkerContextListenerTest {
         when( servletContext.getAttribute("rack.factory") ).thenReturn( null );
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
-        verify( servletContext ).log( startsWith("ERROR[" + WorkerContextListener.class.getName() + "]") );
+        verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] ERROR") );
     }
 
     @Test
@@ -69,7 +69,7 @@ public class WorkerContextListenerTest {
         target.contextInitialized( newMockServletContextEvent(servletContext) );
 
         verify( servletContext ).getInitParameter( WorkerContextListener.SCRIPT_KEY );
-        verify( servletContext ).log( startsWith("WARN[" + WorkerContextListener.class.getName() + "]") );
+        verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
     }
 
     @Test
@@ -86,7 +86,7 @@ public class WorkerContextListenerTest {
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
         
-        verify( servletContext, never() ).log( startsWith("WARN[" + WorkerContextListener.class.getName() + "]") );
+        verify( servletContext, never() ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
     }
 
     @Test
@@ -105,7 +105,7 @@ public class WorkerContextListenerTest {
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
 
-        verify( servletContext, never() ).log( startsWith("WARN[" + WorkerContextListener.class.getName() + "]") );
+        verify( servletContext, never() ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
     }
 
     @Test
