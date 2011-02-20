@@ -38,7 +38,7 @@ import org.jruby.rack.RackInitializationException;
 import org.jruby.rack.RackServletContextListener;
 
 /**
- * A context listener which spawns worker threads.
+ * A context listener that spawns worker threads.
  *
  * @author kares <self_AT_kares_DOT_org>
  */
@@ -50,7 +50,10 @@ public class WorkerContextListener implements ServletContextListener {
      *
      * <context-param>
      *   <param-name>jruby.worker.script</param-name>
-     *   <param-value>require 'delayed/worker'; Delayed::RubyWorker.new.start</param-value>
+     *   <param-value>
+     *      require 'delayed/jruby_worker'
+     *      Delayed::JRubyWorker.new(:quiet => false).start
+     *   </param-value>
      * </context-param>
      */
     public static final String SCRIPT_KEY = "jruby.worker.script";
@@ -97,12 +100,13 @@ public class WorkerContextListener implements ServletContextListener {
             throw new IllegalStateException(message);
         }
 
-        final String workerScript = getWorkerScript(context);
+        final String[] workerScript = getWorkerScript(context); // [ script, fileName ]
+
         if ( workerScript == null ) {
             final String message = "no worker script to execute - configure one using '" + SCRIPT_KEY + "' " +
                     "or '" + SCRIPT_PATH_KEY + "' context-param or see previous errors if already configured";
             context.log("[" + WorkerContextListener.class.getName() + "] WARN: " + message);
-            return; //throw new IllegalStateException(message);
+            return; // throw new IllegalStateException(message);
         }
 
         final int workersCount = getThreadCount(context);
@@ -112,13 +116,14 @@ public class WorkerContextListener implements ServletContextListener {
             final RackApplication app;
             try {
                 app = appFactory.getApplication();
-                final RubyWorker worker = newRubyWorker(app.getRuntime(), workerScript);
+                final RubyWorker worker = newRubyWorker(app.getRuntime(), workerScript[0], workerScript[1]);
                 final Thread workerThread = threadFactory.newThread(worker);
                 workers.put(worker, workerThread);
                 workerThread.start();
             }
             catch (RackInitializationException e) {
                 context.log("[" + WorkerContextListener.class.getName() + "] ERROR: get rack application failed", e);
+                break;
             }
         }
         context.log("[" + WorkerContextListener.class.getName() + "] INFO : started " + workers.size() + " worker(s)");
@@ -129,29 +134,37 @@ public class WorkerContextListener implements ServletContextListener {
      */
     public void contextDestroyed(final ServletContextEvent event) {
         final ServletContext context = event.getServletContext();
-        //contextDestroyed = true;
+        final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(this.workers);
+        this.workers.clear();
         for ( final RubyWorker worker : workers.keySet() ) {
             final Thread workerThread = workers.get(worker);
             try {
-                // JRuby seems to ignore Java's Interrupted arithmentic
+                worker.stop();
+                // JRuby seems to ignore Java's interrupt arithmentic
                 // @see http://jira.codehaus.org/browse/JRUBY-4135
                 workerThread.interrupt();
-                workerThread.join();
-                worker.stop();
+                workerThread.join(1000);
             }
             catch (InterruptedException e) {
+                context.log("[" + WorkerContextListener.class.getName() + "] INFO: interrupted", e);
                 Thread.currentThread().interrupt();
             }
             catch (Exception e) {
                 context.log("[" + WorkerContextListener.class.getName() + "] WARN: ignoring exception", e);
             }
         }
+        /*
+        try { Thread.sleep(1000); } // Tomcat is just too fast with it's thread detection !
+        catch (InterruptedException e) {
+            // SEVERE: The web application [/] appears to have started a thread named [worker_1]
+            // but has failed to stop it. This is very likely to create a memory leak.
+            context.log("[" + WorkerContextListener.class.getName() + "] INFO: ignoring interrupt", e);
+        } */
         context.log("[" + WorkerContextListener.class.getName() + "] INFO: stopped " + workers.size() + " worker(s)");
-        workers.clear();
     }
 
-    protected RubyWorker newRubyWorker(final Ruby runtime, final String script) {
-        return new RubyWorker(runtime, script);
+    protected RubyWorker newRubyWorker(final Ruby runtime, final String script, final String fileName) {
+        return new RubyWorker(runtime, script, fileName);
     }
 
     protected ThreadFactory newThreadFactory(final ServletContext context) {
@@ -187,14 +200,14 @@ public class WorkerContextListener implements ServletContextListener {
         return Thread.NORM_PRIORITY;
     }
 
-    protected String getWorkerScript(final ServletContext context) {
+    protected String[] getWorkerScript(final ServletContext context) {
         String script = context.getInitParameter(SCRIPT_KEY);
-        if ( script != null ) return script;
+        if ( script != null ) return new String [] { script, null };
 
-        script = context.getInitParameter(SCRIPT_PATH_KEY);
-        if ( script != null ) {
+        String scriptPath = context.getInitParameter(SCRIPT_PATH_KEY);
+        if ( scriptPath != null ) {
             // INSPIRED BY DefaultRackApplicationFactory :
-            final InputStream scriptStream = context.getResourceAsStream(script);
+            final InputStream scriptStream = context.getResourceAsStream(scriptPath);
             if ( scriptStream != null ) {
                 final StringBuilder str = new StringBuilder(256);
                 try {
@@ -219,33 +232,44 @@ public class WorkerContextListener implements ServletContextListener {
                 }
                 catch (Exception e) {
                     context.log("[" + WorkerContextListener.class.getName() + "] ERROR: " +
-                                "error reading script: '" + script + "'", e);
+                                "error reading script: '" + scriptPath + "'", e);
                     return null;
                 }
                 script = str.toString();
             }
         }
 
-        return script;
+        return script == null ? null : new String[] { script, scriptPath };
     }
 
     protected static class RubyWorker implements Runnable {
 
         protected final Ruby runtime;
         protected final String script;
+        protected final String fileName;
 
         public RubyWorker(final Ruby runtime, final String script) {
+            this(runtime, script, null);
+        }
+
+        public RubyWorker(final Ruby runtime, final String script, final String fileName) {
             this.runtime = runtime;
             this.script = script;
+            this.fileName = fileName;
         }
 
         public void run() {
-            runtime.evalScriptlet(script);
+            if ( fileName == null ) {
+                runtime.evalScriptlet(script);
+            }
+            else {
+                runtime.executeScript(script, fileName);
+            }
         }
 
         public void stop() {
-            // jruby-rack manages the runtimes thus let it terminate !
-            //JavaEmbedUtils.terminate(runtime);
+            // jruby-rack manages the runtimes thus let it terminate !?
+            if ( true ) JavaEmbedUtils.terminate(runtime);
         }
 
     }
