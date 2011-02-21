@@ -1,17 +1,15 @@
 JRuby Rack Worker
 =================
 
-Java based thread worker implementation over
-[http://github.com/nicksieger/jruby-rack](jruby-rack).
+Java based thread worker implementation over [jruby-rack](http://github.com/nicksieger/jruby-rack).
 
 Motivation
 ----------
 
-While migrating a rails application to [http://jruby.org](jruby) I found myself
-stuck with [http://github.com/collectiveidea/delayed_job](delayed_job). I wanted
+While migrating a rails application to [JRuby](http://jruby.org) I found myself
+stuck with [Delayed::Job](http://github.com/collectiveidea/delayed_job). I wanted
 to deploy the application without having to spawn a separate daemon process in
-another *ruby* (as *jruby* is not daemonizable the
-[http://daemons.rubyforge.org](daemons) way).
+another *ruby* (as *jruby* is not daemonizable the [daemons](http://daemons.rubyforge.org) way).
 
 Well, why not spawn a "daemon" thread looping over the jobs from the servlet
 container ... after all the java world is inherently thread-oriented !
@@ -61,9 +59,9 @@ to `RAILS_ROOT/lib/delayed/jruby_worker.rb` ) ...
 
 **NOTE**: The `WorkerContextListener` needs to be executed (and thus configured)
 after the `RailsServletContextListener`/`RackServletContextListener` as it expects
-the jruby-rack environment to be available !
+the jruby-rack environment to be available.
 
-**NOTE**: If You're not using `threadsafe!` than You really **should** !
+**NOTE**: If You're not using `threadsafe!` than You really **should** ...
 
 **NOTE**: If You're still not using `threadsafe!` mode than You're polling several
 (non-thread-safe) jruby runtimes instances while serving requests, the *workers
@@ -71,88 +69,16 @@ run as part of Your application* thus each worker thread will remove and use an
 application runtime from Your instance pool (consider it while setting the
 `jruby.min.runtimes`/`jruby.max.runtimes` parameters) !
 
-Here's a sample Rails `web.xml` usable with
-[http://caldersphere.rubyforge.org/warbler/](Warbler) including optional
-configuration parameters :
+Sample Rails `web.xml` usable with [Warbler](http://caldersphere.rubyforge.org/warbler)
+including optional configuration parameters
+[web.xml](/kares/jruby-rack-worker/blob/master/src/test/resources/warbler.web.xml).
 
-    <!DOCTYPE web-app PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
-                             "http://java.sun.com/dtd/web-app_2_3.dtd">
-    <!--
-    NOTE: some servers e.g. the awesome http://github.com/calavera/trinidad don't
-          play well with the XML doctype (or namespace) declaration e.g. :
-
-    in that case just remove the above web-app DTD or make sure there's no schema
-    declared within Your web-app root XML element !
-    -->
-    <web-app>
-
-        <context-param>
-            <param-name>rails.env</param-name>
-            <param-value>production</param-value>
-        </context-param>
-
-        <context-param>
-            <param-name>public.root</param-name>
-            <param-value>/</param-value>
-        </context-param>
-
-        <context-param>
-            <param-name>jruby.min.runtimes</param-name>
-            <param-value>1</param-value>
-        </context-param>
-        <context-param>
-            <param-name>jruby.max.runtimes</param-name>
-            <param-value>1</param-value>
-        </context-param>
-
-        <filter>
-            <filter-name>RackFilter</filter-name>
-            <filter-class>org.jruby.rack.RackFilter</filter-class>
-        </filter>
-        <filter-mapping>
-            <filter-name>RackFilter</filter-name>
-            <url-pattern>/*</url-pattern>
-        </filter-mapping>
-
-        <listener>
-            <listener-class>org.jruby.rack.rails.RailsServletContextListener</listener-class>
-        </listener>
-
-        <!-- worker(s) will execute this script : -->
-        <context-param>
-            <param-name>jruby.worker.script</param-name>
-            <param-value>require 'my_worker/worker' || MyWorker::Worker.new.start</param-value>
-        </context-param>
-        <!-- if You script is located in a rb file use : -->
-        <!--
-        <context-param>
-            <param-name>jruby.worker.script.path</param-name>
-            <param-value>my_worker/loop_worker.rb</param-value>
-        </context-param>-->
-        <!-- if one worker thread is not enough, increase the value : -->
-        <context-param>
-            <param-name>jruby.worker.thread.count</param-name>
-            <param-value>1</param-value>
-        </context-param>
-        <!-- You might also change the worker thread priority (use with caution) : -->
-        <!-- accepted values are MIN, MAX, NORM and integer values <1..10> -->
-        <context-param>
-            <param-name>jruby.worker.thread.priority</param-name>
-            <param-value>NORM</param-value>
-        </context-param>
-
-        <!-- make sure it's declared after the "default" jruby-rack listener : -->
-        <listener>
-            <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
-        </listener>
-
-    </web-app>
 
 Build
 =====
 
-[http://jruby.org/](JRuby) 1.5+ is required to build the project.
-The build is performed by [http://rake.rubyforge.org/](rake) which should be part
+[JRuby](http://jruby.org) 1.5+ is required to build the project.
+The build is performed by [rake](http://rake.rubyforge.org) which should be part
 of Your JRuby installation, if You're experiencing conflicts with another Ruby and
 it's rake executable use `jruby -S rake` instead of the bare `rake` command.
 
@@ -163,3 +89,28 @@ Build the `jruby-rack-worker.jar` using :
 Run the tests with :
 
     rake test
+
+
+Worker Migration
+================
+
+There are a few gotchas to keep in mind when migrating a worker such as
+[Delayed::Job](http://github.com/collectiveidea/delayed_job) to JRuby, You'll most
+probably need to start by looking at Your worker spawning script (such as `script/delayed_job`) :
+
+ * avoid native gems such as daemons (in DJ's case this means avoiding the whole
+   `Delayed::Command` implementation)
+
+ * remove command line processing - all Your configuration should happen in an
+   initializer or the `web.xml`
+
+ * make sure the worker code is thread-safe in case Your application is running in 
+   `threadsafe!` mode (make sure no global state is changing by the worker or 
+   class variables are not being used to store worker state)
+
+ * refactor Your worker's exit code from a (process oriented) signal based `trap`
+   to `at_exit` - respects better the JRuby servlet environment Your workers be
+   running in
+
+See the [Delayed::Job](/kares/jruby-rack-worker/tree/master/src/main/ruby/delayed)
+JRuby "migrated" worker code for inspiration.
