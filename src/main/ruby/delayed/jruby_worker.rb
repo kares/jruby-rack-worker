@@ -1,4 +1,3 @@
-
 require 'delayed/worker' unless defined?(Delayed::Worker)
 
 module Delayed

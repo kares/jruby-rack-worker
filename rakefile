@@ -1,29 +1,41 @@
 
 PROJECT_NAME = 'jruby-rack-worker'
-PROJECT_VERSION = File.read('version')
 
 SRC_DIR = 'src'
+
 MAIN_SRC_DIR = File.join(SRC_DIR, 'main/java')
 RUBY_SRC_DIR = File.join(SRC_DIR, 'main/ruby')
 TEST_SRC_DIR = File.join(SRC_DIR, 'test/java')
+
 OUT_DIR = 'out'
+
 MAIN_BUILD_DIR = File.join(OUT_DIR, 'classes')
 TEST_BUILD_DIR = File.join(OUT_DIR, 'test-classes')
 TEST_RESULTS_DIR = File.join(OUT_DIR, 'test-results')
-RUBY_DEST_DIR_NAME = '' # 'META-INF/jruby_rack_worker'
-LIB_DIR = 'lib'
+
+LIB_BASE_DIR = 'lib'
 
 unless defined?(JRUBY_VERSION)
   raise "Hey, we're not running within JRuby my dear !"
 end
 
+load File.join(RUBY_SRC_DIR, "#{PROJECT_NAME.gsub('-', '/')}", 'version.rb')
+
+def project_version
+  JRuby::Rack::Worker::VERSION
+end
+
+def out_jar_path
+  "#{OUT_DIR}/#{PROJECT_NAME}_#{project_version}.jar"
+end
+
 require 'ant'
-ant.property :name => "ivy.lib.dir", :value => LIB_DIR
+ant.property :name => "ivy.lib.dir", :value => LIB_BASE_DIR
 
 namespace :ivy do
 
   ivy_version = '2.1.0'
-  ivy_jar_dir = File.join(LIB_DIR, 'build')
+  ivy_jar_dir = File.join(LIB_BASE_DIR, 'build')
   ivy_jar_file = File.join(ivy_jar_dir, 'ivy.jar')
 
   task :download do
@@ -47,12 +59,12 @@ task :retrieve => :"ivy:install" do
 end
 
 ant.path :id => "main.class.path" do
-  fileset :dir => LIB_DIR do
+  fileset :dir => LIB_BASE_DIR do
     include :name => 'runtime/*.jar'
   end
 end
 ant.path :id => "test.class.path" do
-  fileset :dir => LIB_DIR do
+  fileset :dir => LIB_BASE_DIR do
     include :name => 'test/*.jar'
   end
 end
@@ -66,19 +78,65 @@ task :compile => :retrieve do
 end
 
 task :copy_resources do
-  mkdir_p ruby_dest_dir = File.join(MAIN_BUILD_DIR, RUBY_DEST_DIR_NAME)
-  cp_r File.join(RUBY_SRC_DIR, '.'), ruby_dest_dir
+  mkdir_p ruby_dest_dir = File.join(MAIN_BUILD_DIR, '') # 'META-INF/jruby_rack_worker'
+  ant.copy :todir => ruby_dest_dir do
+    fileset :dir => RUBY_SRC_DIR do
+      exclude :name => 'jruby_rack_worker.rb'
+      exclude :name => 'jruby/**'
+    end
+  end
 end
 
+desc "build jar"
 task :jar => [ :compile, :copy_resources ] do
-  ant.jar :destfile => "#{OUT_DIR}/#{PROJECT_NAME}_#{PROJECT_VERSION}.jar", :basedir => MAIN_BUILD_DIR do
+  ant.jar :destfile => out_jar_path, :basedir => MAIN_BUILD_DIR do
     manifest do
       attribute :name => "Built-By", :value => "${user.name}"
       attribute :name => "Implementation-Title", :value => PROJECT_NAME
-      attribute :name => "Implementation-Version", :value => PROJECT_VERSION
+      attribute :name => "Implementation-Version", :value => project_version
       attribute :name => "Implementation-Vendor", :value => "Karol Bucek"
       attribute :name => "Implementation-Vendor-Id", :value => "org.kares"
     end
+  end
+end
+
+desc "build gem"
+task :gem => [ :jar ] do
+  mkdir_p gem_out = File.join(OUT_DIR, 'gem')
+  mkdir_p gem_out_lib = File.join(gem_out, 'lib')
+
+  cp FileList["LICENSE", "README.md"], gem_out
+  cp out_jar_path, gem_out_lib
+  
+  if (jars = FileList["#{gem_out_lib}/*.jar"].to_a).size > 1
+    abort "too many jars! #{jars.map{ |j| File.basename(j) }.inspect}\nrake clean first"
+  end
+
+  ant.copy :todir => gem_out_lib do
+    fileset :dir => RUBY_SRC_DIR do
+      include :name => '*.rb'
+      include :name => 'jruby/**/*.rb'
+    end
+  end
+  
+  Dir.chdir(gem_out) do
+    rm_f gemspec_file = "#{PROJECT_NAME}.gemspec"
+    gem_spec = Gem::Specification.new do |spec|
+      spec.name = PROJECT_NAME
+      spec.version = project_version
+      spec.platform = 'jruby'
+      spec.authors = ["Karol Bucek"]
+      spec.email = ["self@kares.org"]
+      spec.homepage = %q{http://github.com/kares/jruby-rack-worker}
+      spec.summary = %q{Simple Worker for JRuby-Rack}
+      spec.description = %{Implements a thread based worker using JRuby-Rack (a.k.a. Delayed Job for Java). Usable in servlet containers.}
+      spec.add_dependency 'jruby-rack', ">= 1.0.1"
+      spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
+      spec.has_rdoc = false
+    end
+    Gem::Builder.new(gem_spec).build
+    File.open(gemspec_file, 'w') {|f| f << gem_spec.to_ruby }
+    mv FileList['*.gem'], '..'
   end
 end
 
