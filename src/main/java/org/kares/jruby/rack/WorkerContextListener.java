@@ -205,41 +205,40 @@ public class WorkerContextListener implements ServletContextListener {
         if ( script != null ) return new String [] { script, null };
 
         String scriptPath = context.getInitParameter(SCRIPT_PATH_KEY);
-        if ( scriptPath != null ) {
-            // INSPIRED BY DefaultRackApplicationFactory :
-            final InputStream scriptStream = context.getResourceAsStream(scriptPath);
-            if ( scriptStream != null ) {
-                final StringBuilder str = new StringBuilder(256);
-                try {
-                    int c = scriptStream.read();
-                    Reader reader; String coding = "UTF-8";
-                    if (c == '#') { // look for a coding: pragma
-                        str.append((char) c);
-                        while ((c = scriptStream.read()) != -1 && c != 10) {
-                            str.append((char) c);
-                        }
-                        Pattern matchCoding = Pattern.compile("coding:\\s*(\\S+)");
-                        Matcher matcher = matchCoding.matcher( str.toString() );
-                        if (matcher.find()) coding = matcher.group(1);
-                    }
-
+        if ( scriptPath == null ) return null;
+        // INSPIRED BY DefaultRackApplicationFactory :
+        final InputStream scriptStream = context.getResourceAsStream(scriptPath);
+        if ( scriptStream != null ) {
+            final StringBuilder str = new StringBuilder(256);
+            try {
+                int c = scriptStream.read();
+                Reader reader; String coding = "UTF-8";
+                if (c == '#') { // look for a coding: pragma
                     str.append((char) c);
-                    reader = new InputStreamReader(scriptStream, coding);
-
-                    while ((c = reader.read()) != -1) {
+                    while ((c = scriptStream.read()) != -1 && c != 10) {
                         str.append((char) c);
                     }
+                    Pattern matchCoding = Pattern.compile("coding:\\s*(\\S+)");
+                    Matcher matcher = matchCoding.matcher( str.toString() );
+                    if (matcher.find()) coding = matcher.group(1);
                 }
-                catch (Exception e) {
-                    context.log("[" + WorkerContextListener.class.getName() + "] ERROR: " +
-                                "error reading script: '" + scriptPath + "'", e);
-                    return null;
+
+                str.append((char) c);
+                reader = new InputStreamReader(scriptStream, coding);
+
+                while ((c = reader.read()) != -1) {
+                    str.append((char) c);
                 }
-                script = str.toString();
             }
+            catch (Exception e) {
+                context.log("[" + WorkerContextListener.class.getName() + "] ERROR: " +
+                            "error reading script: '" + scriptPath + "'", e);
+                return null;
+            }
+            script = str.toString();
         }
 
-        return script == null ? null : new String[] { script, scriptPath };
+        return new String[] { script, scriptPath }; // one of these is != null
     }
 
     protected static class RubyWorker implements Runnable {
@@ -262,13 +261,17 @@ public class WorkerContextListener implements ServletContextListener {
             if ( fileName == null ) {
                 runtime.evalScriptlet(script);
             }
+            else if ( script == null ) {
+                // try loading the script using ruby :
+                runtime.evalScriptlet("load '" + fileName + "'");
+            }
             else {
                 runtime.executeScript(script, fileName);
             }
         }
 
         public void stop() {
-            // jruby-rack manages the runtimes thus let it terminate !?
+            // @TODO jruby-rack manages the runtimes thus let it terminate !?
             if ( true ) JavaEmbedUtils.terminate(runtime);
         }
 
