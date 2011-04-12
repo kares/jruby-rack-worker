@@ -62,9 +62,9 @@ public class WorkerContextListenerTest {
     public void contextInitializedShouldWarnAndReturnIfThereIsNoWorkerScript()
         throws RackInitializationException {
 
+        RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
         ServletContext servletContext = mock(ServletContext.class);
-        RackApplicationFactory applicationFactory = newMockRackApplicationFactory( new DefaultRackApplication() );
-        when( servletContext.getAttribute("rack.factory") ).thenReturn( applicationFactory );
+        when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
 

@@ -208,7 +208,7 @@ public class WorkerContextListener implements ServletContextListener {
         if ( script != null ) return new String [] { script, null };
 
         String scriptPath = context.getInitParameter(SCRIPT_PATH_KEY);
-        if ( scriptPath == null ) return new String [] { null, DEFAULT_SCRIPT_PATH };
+        if ( scriptPath == null ) return null;
         // INSPIRED BY DefaultRackApplicationFactory :
         final InputStream scriptStream = context.getResourceAsStream(scriptPath);
         if ( scriptStream != null ) {
