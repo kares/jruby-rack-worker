@@ -80,6 +80,9 @@ public class WorkerContextListener implements ServletContextListener {
      */
     public static final String THREAD_PRIORITY_KEY = "jruby.worker.thread.priority";
 
+
+    private static final String DEFAULT_SCRIPT_PATH = "jruby/rack/worker/auto_start.rb";
+
     // 4 TEST ACCESS
     final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(4);
 
@@ -205,7 +208,7 @@ public class WorkerContextListener implements ServletContextListener {
         if ( script != null ) return new String [] { script, null };
 
         String scriptPath = context.getInitParameter(SCRIPT_PATH_KEY);
-        if ( scriptPath == null ) return null;
+        if ( scriptPath == null ) return new String [] { null, DEFAULT_SCRIPT_PATH };
         // INSPIRED BY DefaultRackApplicationFactory :
         final InputStream scriptStream = context.getResourceAsStream(scriptPath);
         if ( scriptStream != null ) {

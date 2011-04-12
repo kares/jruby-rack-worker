@@ -45,7 +45,9 @@ namespace :ivy do
       :usetimestamp => true
   end
 
-  task :install => :download do
+  task :install do
+    Rake::Task["download"].invoke unless File.exist?(ivy_jar_file)
+    
     ant.path :id => 'ivy.lib.path' do
       fileset :dir => ivy_jar_dir, :includes => '*.jar'
     end
@@ -81,8 +83,7 @@ task :copy_resources do
   mkdir_p ruby_dest_dir = File.join(MAIN_BUILD_DIR, '') # 'META-INF/jruby_rack_worker'
   ant.copy :todir => ruby_dest_dir do
     fileset :dir => RUBY_SRC_DIR do
-      exclude :name => 'jruby_rack_worker.rb'
-      exclude :name => 'jruby/**'
+      exclude :name => 'jruby_rack_worker.rb' # exclude :name => 'jruby/**'
     end
   end
 end
