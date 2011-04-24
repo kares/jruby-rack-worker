@@ -30,7 +30,6 @@ import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
 import org.jruby.Ruby;
-import org.jruby.javasupport.JavaEmbedUtils;
 
 import org.jruby.rack.RackApplication;
 import org.jruby.rack.RackApplicationFactory;
@@ -43,6 +42,16 @@ import org.jruby.rack.RackServletContextListener;
  * @author kares <self_AT_kares_DOT_org>
  */
 public class WorkerContextListener implements ServletContextListener {
+
+    /**
+     * The built-in worker to use.
+     *
+     * <context-param>
+     *   <param-name>jruby.worker</param-name>
+     *   <param-value>Delayed::Job</param-value>
+     * </context-param>
+     */
+    public static final String WORKER_KEY = "jruby.worker";
 
     /**
      * The worker script to execute (should be a loop of some kind).
@@ -79,9 +88,6 @@ public class WorkerContextListener implements ServletContextListener {
      * between 1 - 10.
      */
     public static final String THREAD_PRIORITY_KEY = "jruby.worker.thread.priority";
-
-
-    private static final String DEFAULT_SCRIPT_PATH = "jruby/rack/worker/auto_start.rb";
 
     // 4 TEST ACCESS
     final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(4);
@@ -204,6 +210,18 @@ public class WorkerContextListener implements ServletContextListener {
     }
 
     protected String[] getWorkerScript(final ServletContext context) {
+        String worker = context.getInitParameter(WORKER_KEY);
+        if ( worker != null ) {
+            String script = getAvailableWorkers().get( worker.replace("::", "_").toLowerCase() );
+            if ( script != null ) {
+                return new String [] { script, null };
+            }
+            else {
+                context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
+                            "unsupported worker name: '" + worker + "'");
+            }
+        }
+
         String script = context.getInitParameter(SCRIPT_KEY);
         if ( script != null ) return new String [] { script, null };
 
@@ -244,40 +262,16 @@ public class WorkerContextListener implements ServletContextListener {
         return new String[] { script, scriptPath }; // one of these is != null
     }
 
-    protected static class RubyWorker implements Runnable {
+    protected Map<String, String> getAvailableWorkers() {
+        return new HashMap<String, String>() {
 
-        protected final Ruby runtime;
-        protected final String script;
-        protected final String fileName;
-
-        public RubyWorker(final Ruby runtime, final String script) {
-            this(runtime, script, null);
-        }
-
-        public RubyWorker(final Ruby runtime, final String script, final String fileName) {
-            this.runtime = runtime;
-            this.script = script;
-            this.fileName = fileName;
-        }
-
-        public void run() {
-            if ( fileName == null ) {
-                runtime.evalScriptlet(script);
+            {
+                put("delayed_job", "delayed/jruby_worker.rb");
+                put("delayed", "delayed/jruby_worker.rb"); // alias
+                put("navvy", "navvy/jruby_worker.rb");
             }
-            else if ( script == null ) {
-                // try loading the script using ruby :
-                runtime.evalScriptlet("load '" + fileName + "'");
-            }
-            else {
-                runtime.executeScript(script, fileName);
-            }
-        }
 
-        public void stop() {
-            // @TODO jruby-rack manages the runtimes thus let it terminate !?
-            if ( true ) JavaEmbedUtils.terminate(runtime);
-        }
-
+        };
     }
 
 }

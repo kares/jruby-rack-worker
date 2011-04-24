@@ -27,7 +27,6 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 
 import org.jruby.Ruby;
-import org.jruby.rack.DefaultRackApplication;
 import org.jruby.rack.RackApplication;
 import org.jruby.rack.RackApplicationFactory;
 import org.jruby.rack.RackInitializationException;
@@ -68,8 +67,60 @@ public class WorkerContextListenerTest {
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
 
-        verify( servletContext ).getInitParameter( WorkerContextListener.SCRIPT_KEY );
+        verify( servletContext ).getInitParameter( "jruby.worker" );
+        verify( servletContext ).getInitParameter( "jruby.worker.script" );
         verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
+    }
+
+    @Test
+    public void contextInitializedShouldNotWarnIfThereIsAWorker1()
+        throws RackInitializationException {
+
+        WorkerThreadFactory threadFactory = mockWorkerThreadFactory();
+        when( threadFactory.newThread( any(Runnable.class) ) ).thenReturn( new Thread() );
+
+        RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
+        ServletContext servletContext = mock(ServletContext.class);
+        when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
+        when( servletContext.getInitParameter( "jruby.worker" ) ).thenReturn( "Delayed::Job" );
+
+        target.contextInitialized( newMockServletContextEvent(servletContext) );
+
+        verify( servletContext, never() ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
+    }
+
+    @Test
+    public void contextInitializedShouldNotWarnIfThereIsAWorker2()
+        throws RackInitializationException {
+
+        WorkerThreadFactory threadFactory = mockWorkerThreadFactory();
+        when( threadFactory.newThread( any(Runnable.class) ) ).thenReturn( new Thread() );
+
+        RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
+        ServletContext servletContext = mock(ServletContext.class);
+        when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
+        when( servletContext.getInitParameter( "jruby.worker" ) ).thenReturn( "delayed_job" );
+
+        target.contextInitialized( newMockServletContextEvent(servletContext) );
+
+        verify( servletContext, never() ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
+    }
+
+    @Test
+    public void contextInitializedShouldNotWarnIfThereIsAWorker3()
+        throws RackInitializationException {
+
+        WorkerThreadFactory threadFactory = mockWorkerThreadFactory();
+        when( threadFactory.newThread( any(Runnable.class) ) ).thenReturn( new Thread() );
+
+        RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
+        ServletContext servletContext = mock(ServletContext.class);
+        when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
+        when( servletContext.getInitParameter( "jruby.worker" ) ).thenReturn( "navvy" );
+
+        target.contextInitialized( newMockServletContextEvent(servletContext) );
+
+        verify( servletContext, never() ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
     }
 
     @Test
@@ -82,7 +133,7 @@ public class WorkerContextListenerTest {
         RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
         ServletContext servletContext = mock(ServletContext.class);
         when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
-        when( servletContext.getInitParameter( WorkerContextListener.SCRIPT_KEY ) ).thenReturn( "puts 'hello kares !'" );
+        when( servletContext.getInitParameter( "jruby.worker.script" ) ).thenReturn( "puts 'hello kares !'" );
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
         
@@ -99,7 +150,7 @@ public class WorkerContextListenerTest {
         RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
         ServletContext servletContext = mock(ServletContext.class);
         when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
-        when( servletContext.getInitParameter( WorkerContextListener.SCRIPT_PATH_KEY ) ).thenReturn( "/path/worker.rb" );
+        when( servletContext.getInitParameter( "jruby.worker.script.path" ) ).thenReturn( "/path/worker.rb" );
         InputStream inputStream = new ByteArrayInputStream( "nil".getBytes("UTF-8") );
         when( servletContext.getResourceAsStream("/path/worker.rb") ).thenReturn( inputStream );
 
@@ -119,7 +170,7 @@ public class WorkerContextListenerTest {
         RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
         ServletContext servletContext = mock(ServletContext.class);
         when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
-        when( servletContext.getInitParameter( WorkerContextListener.SCRIPT_KEY ) ).thenReturn( "nil" );
+        when( servletContext.getInitParameter( "jruby.worker.script" ) ).thenReturn( "nil" );
         when( servletContext.getInitParameter( WorkerContextListener.THREAD_PRIORITY_KEY ) ).thenReturn( null );
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
@@ -144,7 +195,7 @@ public class WorkerContextListenerTest {
         RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
         ServletContext servletContext = mock(ServletContext.class);
         when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
-        when( servletContext.getInitParameter( WorkerContextListener.SCRIPT_KEY ) ).thenReturn( "nil" );
+        when( servletContext.getInitParameter( "jruby.worker.script" ) ).thenReturn( "nil" );
         when( servletContext.getServletContextName() ).thenReturn( "TheTestApp" );
         when( servletContext.getInitParameter( WorkerContextListener.THREAD_COUNT_KEY ) ).thenReturn( null );
         when( servletContext.getInitParameter( WorkerContextListener.THREAD_PRIORITY_KEY ) ).thenReturn( "7" );
@@ -176,7 +227,7 @@ public class WorkerContextListenerTest {
         RackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
         ServletContext servletContext = mock(ServletContext.class);
         when( servletContext.getAttribute( "rack.factory" ) ).thenReturn( applicationFactory );
-        when( servletContext.getInitParameter( WorkerContextListener.SCRIPT_PATH_KEY ) ).thenReturn( "/path/worker.rb" );
+        when( servletContext.getInitParameter( "jruby.worker.script.path" ) ).thenReturn( "/path/worker.rb" );
         InputStream inputStream = new ByteArrayInputStream( "nil".getBytes("UTF-8") );
         when( servletContext.getResourceAsStream("/path/worker.rb") ).thenReturn( inputStream );
         when( servletContext.getInitParameter( WorkerContextListener.THREAD_COUNT_KEY ) ).thenReturn( "3" );
