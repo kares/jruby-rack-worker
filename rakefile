@@ -46,7 +46,7 @@ namespace :ivy do
   end
 
   task :install do
-    Rake::Task["download"].invoke unless File.exist?(ivy_jar_file)
+    Rake::Task["ivy:download"].invoke unless File.exist?(ivy_jar_file)
     
     ant.path :id => 'ivy.lib.path' do
       fileset :dir => ivy_jar_dir, :includes => '*.jar'
@@ -134,6 +134,7 @@ task :gem => [ :jar ] do
       spec.add_dependency 'jruby-rack', ">= 1.0.1"
       spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
       spec.has_rdoc = false
+      spec.rubyforge_project = '[none]'
     end
     Gem::Builder.new(gem_spec).build
     File.open(gemspec_file, 'w') {|f| f << gem_spec.to_ruby }
