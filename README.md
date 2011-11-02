@@ -22,16 +22,16 @@ container ... after all the java world is inherently thread-oriented !
 
 This does have the advantage of keeping the deployment simple and saving some
 precious memory (most notably with `threadsafe!` mode) that would have been
-eaten by the separate process. Besides Your daemons start benefiting from
+eaten by the separate process. Besides, your daemons start benefiting from
 JRuby's (as well as Java's) runtime optimalizations ...
 
-On the other hand Your jobs should be simple and complete "fast" (in a rate of
+On the other hand your jobs should be simple and complete "fast" (in a rate of
 seconds rather than several minutes or hours) as they will restart and live with
 the lifecycle of the deployed application and/or application server.
 
 Java purist might objects the servlet specification does not advise spawning
 daemon threads in a servlet container, objection noted. Whether this style of
-asynchronous processing suits Your limits, needs and taste is entirely up to
+asynchronous processing suits your limits, needs and taste is entirely up to
 You.
 
 
@@ -117,15 +117,15 @@ most probably need to start by looking at the current worker spawning script
  * avoid native gems such as daemons (in DJ's case this means avoiding the whole
    `Delayed::Command` implementation)
 
- * remove command line processing - all Your configuration should happen in an
+ * remove command line processing - all your configuration should happen in an
    application initializer or the `web.xml`
 
- * make sure the worker code is thread-safe in case Your application is running
+ * make sure the worker code is thread-safe in case your application is running
    in `threadsafe!` mode (make sure no global state is changing by the worker or
    class variables are not being used to store worker state)
 
- * refactor Your worker's exit code from a (process oriented) signal based `trap`
-   to `at_exit` - which respects better the JRuby environment Your workers are
+ * refactor your worker's exit code from a (process oriented) signal based `trap`
+   to `at_exit` - which respects better the JRuby environment your workers are
    going to run in
 
 
