@@ -99,7 +99,7 @@ public class WorkerContextListener implements ServletContextListener {
         final ServletContext context = event.getServletContext();
         // JRuby-Rack :
         final RackApplicationFactory appFactory = (RackApplicationFactory)
-                context.getAttribute( RackServletContextListener.FACTORY_KEY );
+                context.getAttribute( RackApplicationFactory.FACTORY );
         if ( appFactory == null ) {
             final String message = 
                     RackApplicationFactory.class.getName() + " not yet initialized - " +

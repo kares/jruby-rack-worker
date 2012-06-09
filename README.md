@@ -1,7 +1,7 @@
 JRuby Rack Worker
 =================
 
-Java based thread worker implementation over [jruby-rack](http://github.com/nicksieger/jruby-rack).
+Java based thread worker implementation over [jruby-rack](http://github.com/jruby/jruby-rack).
 
 Natively supports [Delayed::Job](http://github.com/collectiveidea/delayed_job) and
 [Navvy](http://github.com/jeffkreeftmeijer/navvy) but one can easily write his own

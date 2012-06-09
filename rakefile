@@ -128,10 +128,14 @@ task :gem => [ :jar ] do
       spec.platform = 'jruby'
       spec.authors = ["Karol Bucek"]
       spec.email = ["self@kares.org"]
-      spec.homepage = %q{http://github.com/kares/jruby-rack-worker}
-      spec.summary = %q{Simple Worker for JRuby-Rack}
-      spec.description = %{Implements a thread based worker using JRuby-Rack (a.k.a. Delayed Job for Java). Usable in servlet containers.}
-      spec.add_dependency 'jruby-rack', ">= 1.0.1"
+      spec.homepage = 'http://github.com/kares/jruby-rack-worker'
+      spec.summary = 'Simple Worker with JRuby-Rack'
+      spec.description = 
+        "Implements a thread based worker pattern on top of JRuby-Rack. " +
+        "Useful if you'd like to run a worker loop (such as Delayed::Job or Resque) " +
+        "as part of your web-application (concurrently in a separate thread) " + 
+        "instead of using a separate process. To be used with a servlet containers."
+      spec.add_dependency 'jruby-rack', ">= 1.1.1"
       spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
       spec.has_rdoc = false
       spec.rubyforge_project = '[none]'
@@ -152,6 +156,7 @@ task :'test:compile' => :compile do
   end
 end
 
+desc "run tests"
 task :test => :'test:compile' do
   mkdir_p TEST_RESULTS_DIR
   ant.junit :fork => true,
@@ -177,6 +182,7 @@ task :test => :'test:compile' do
   end
 end
 
+desc "clean up"
 task :clean do
   rm_rf OUT_DIR
 end

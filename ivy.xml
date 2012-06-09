@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ivy-module version="2.0">
-    <info organisation="org.kares.jruby.rack" module="jruby_rack_worker"/>
+    <info organisation="org.kares.jruby.rack" module="jruby-rack-worker"/>
     <configurations>
         <conf name="build" description="Libraries needed for compilation"/>
         <conf name="runtime" extends="build" description="Libraries that need to be included with project jar" />
@@ -8,7 +8,7 @@
     </configurations>
     <dependencies>
         <dependency org="javax.servlet" name="servlet-api" rev="2.4" conf="runtime->*"/>
-        <dependency org="org.jruby.rack" name="jruby-rack" rev="1.0.3" conf="runtime->*"/>
+        <dependency org="org.jruby.rack" name="jruby-rack" rev="1.1.6" conf="runtime->*"/>
         <dependency org="junit" name="junit" rev="4.8.1" conf="test->*"/>
         <dependency org="org.mockito" name="mockito-all" rev="1.8.5" conf="test->*"/>
     </dependencies>
