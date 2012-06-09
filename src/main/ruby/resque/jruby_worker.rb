@@ -42,11 +42,14 @@ module Resque
       nil
     end
     
+    # reserve changed since version 1.20.0
+    RESERVE_ARG = instance_method(:reserve).arity > 0 # :nodoc
+    
     def work(interval = 5.0, &block)
       interval = Float(interval)
       procline "Starting" # do not change $0
       startup
-
+      
       loop do
         break if shutdown?
         
@@ -55,7 +58,7 @@ module Resque
           pause while paused? # keep sleeping while paused
         end
         
-        if job = reserve(interval)
+        if job = RESERVE_ARG ? reserve(interval) : reserve
           log "got: #{job.inspect}"
           job.worker = self
           run_hook :before_fork, job
@@ -65,18 +68,23 @@ module Resque
           perform(job, &block)
 
           done_working
-          @child = nil
         else
           break if interval.zero?
-          log! "Timed out after #{interval} seconds"
-          procline paused? ? "Paused" : "Waiting for #{@queues.join(',')}"
+          if RESERVE_ARG
+            log! "Sleeping for #{interval} seconds"
+            procline paused? ? "Paused" : "Waiting for #{@queues.join(',')}"
+            sleep interval            
+          else
+            log! "Timed out after #{interval} seconds"
+            procline paused? ? "Paused" : "Waiting for #{@queues.join(',')}"
+          end
         end
       end
 
     ensure
       unregister_worker
     end
-
+    
     # no forking with JRuby
     def fork
       @cant_fork = true
