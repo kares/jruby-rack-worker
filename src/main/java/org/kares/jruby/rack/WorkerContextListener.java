@@ -269,6 +269,7 @@ public class WorkerContextListener implements ServletContextListener {
                 put("delayed_job", "delayed/jruby_worker.rb");
                 put("delayed", "delayed/jruby_worker.rb"); // alias
                 put("navvy", "navvy/jruby_worker.rb");
+                put("resque", "resque/jruby_worker.rb");
             }
 
         };
