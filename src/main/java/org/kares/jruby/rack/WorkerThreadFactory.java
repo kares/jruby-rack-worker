@@ -26,6 +26,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class WorkerThreadFactory implements ThreadFactory {
 
+    /**
+     * Thread name identifier, all threads created with this factory
+     * contain the given identifier.
+     */
+    public static final String NAME_ID = "jruby-rack-worker_";
+    
     static final AtomicInteger threadCount = new AtomicInteger(1);
 
     private final String prefix;
@@ -44,8 +50,7 @@ public class WorkerThreadFactory implements ThreadFactory {
     }
 
     public Thread newThread(final Runnable task) {
-        final String threadName =
-                prefix + "worker_" + threadCount.getAndIncrement();
+        final String threadName = prefix + NAME_ID + threadCount.getAndIncrement();
         final Thread thread = new Thread(group, task, threadName, 0);
         if ( ! thread.isDaemon() ) thread.setDaemon(true);
         if ( thread.getPriority() != priority ) thread.setPriority(priority);
