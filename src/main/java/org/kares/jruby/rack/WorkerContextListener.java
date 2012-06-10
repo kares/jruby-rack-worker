@@ -209,12 +209,17 @@ public class WorkerContextListener implements ServletContextListener {
         return Thread.NORM_PRIORITY;
     }
 
+    /**
+     * Get the worker script/file to execute.
+     * @param context
+     * @return a script, fileName tuple
+     */
     protected String[] getWorkerScript(final ServletContext context) {
         String worker = context.getInitParameter(WORKER_KEY);
         if ( worker != null ) {
             String script = getAvailableWorkers().get( worker.replace("::", "_").toLowerCase() );
             if ( script != null ) {
-                return new String [] { script, null };
+                return new String [] { null, script };
             }
             else {
                 context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
@@ -266,10 +271,10 @@ public class WorkerContextListener implements ServletContextListener {
         return new HashMap<String, String>() {
 
             {
-                put("delayed_job", "delayed/jruby_worker.rb");
-                put("delayed", "delayed/jruby_worker.rb"); // alias
-                put("navvy", "navvy/jruby_worker.rb");
-                put("resque", "resque/jruby_worker.rb");
+                put("delayed_job", "delayed/start_worker.rb");
+                put("delayed", "delayed/start_worker.rb"); // alias
+                put("navvy", "navvy/start_worker.rb");
+                put("resque", "resque/start_worker.rb");
             }
 
         };
