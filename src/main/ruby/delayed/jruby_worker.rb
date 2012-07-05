@@ -1,3 +1,4 @@
+require 'java'
 require 'delayed/worker' unless defined?(Delayed::Worker)
 
 module Delayed
@@ -7,48 +8,41 @@ module Delayed
   # - no daemons dependency + thread-safe
   # @see #start_worker.rb
   class JRubyWorker < Worker
-
+    
+    def name
+      return @name unless @name.nil?
+      prefix = "#{@name_prefix}host:#{Socket.gethostname} pid:#{Process.pid} " rescue "#{@name_prefix}"
+      @name = "#{prefix}thread:#{java.lang.Thread.currentThread.getName}".freeze
+    end
+    
     def start
-      say "starting #{Delayed::JRubyWorker}[#{name}] ..."
-
-      at_exit { exit! }
-
-      loop do
-        result = nil
-
-        realtime = Benchmark.realtime do
-          result = work_off
-        end
-
-        count = result.sum
-
-        break if @exit
-
-        if count.zero?
-          sleep(self.class.sleep_delay)
-        else
-          say "#{count} jobs processed at %.4f j/s, %d failed ..." % [count / realtime, result.last]
-        end
-
-        break if @exit
-      end
-      @exit
+      say "starting #{self.class.name}[#{name}] ..."
+      super
     end
 
     def exit!
-      return if @exit
-      say "exiting #{Delayed::JRubyWorker}[#{name}] ..."
-      @exit = true
-      Delayed::Job.clear_locks!(name)
+      return if @exit # #stop?
+      say "exiting #{self.class.name}[#{name}] ..."
+      @exit = true # #stop
+      Delayed::Job.clear_locks!(name) if Delayed::Job.respond_to?(:clear_locks!)
     end
-
+    
+    protected
+    
+    def trap(name)
+      # catch traps from #start :
+      #trap('TERM') { say 'Exiting...'; stop }
+      #trap('INT') { say 'Exiting...'; stop }
+      at_exit { exit! } if name.to_s == 'TERM'
+    end
+    
   end
 
 end
 
 Delayed::Worker.guess_backend unless Delayed::Worker.backend
 
-Delayed::Worker.backend.before_fork
+Delayed::Worker.backend.before_fork if Delayed::Worker.backend
 
 Dir.chdir( Rails.root ) if defined?(Rails.root) && Dir.getwd != Rails.root
 # NOTE: no explicit logger configuration - DJ logger defaults to Rails.logger
@@ -57,4 +51,4 @@ Dir.chdir( Rails.root ) if defined?(Rails.root) && Dir.getwd != Rails.root
 # of delayed_job.log (like Delayed::Command does) ...
 #Delayed::Worker.logger = Logger.new(File.join(Rails.root, 'log', 'delayed_job.log'))
 
-Delayed::Worker.backend.after_fork
+Delayed::Worker.backend.after_fork if Delayed::Worker.backend
