@@ -105,7 +105,7 @@ public class WorkerContextListener implements ServletContextListener {
                     RackApplicationFactory.class.getName() + " not yet initialized - " +
                     "seems this listener is executing before the " +
                     RackServletContextListener.class.getName() + "/RailsSevletContextListener !";
-            context.log("[" + WorkerContextListener.class.getName() + "] ERROR: " + message);
+            context.log("[" + WorkerContextListener.class.getName() + "] " + message);
             throw new IllegalStateException(message);
         }
 
@@ -114,7 +114,7 @@ public class WorkerContextListener implements ServletContextListener {
         if ( workerScript == null ) {
             final String message = "no worker script to execute - configure one using '" + SCRIPT_KEY + "' " +
                     "or '" + SCRIPT_PATH_KEY + "' context-param or see previous errors if already configured";
-            context.log("[" + WorkerContextListener.class.getName() + "] WARN: " + message);
+            context.log("[" + WorkerContextListener.class.getName() + "] " + message + " !");
             return; // throw new IllegalStateException(message);
         }
 
@@ -131,11 +131,11 @@ public class WorkerContextListener implements ServletContextListener {
                 workerThread.start();
             }
             catch (RackInitializationException e) {
-                context.log("[" + WorkerContextListener.class.getName() + "] ERROR: get rack application failed", e);
+                context.log("[" + WorkerContextListener.class.getName() + "] get rack application failed", e);
                 break;
             }
         }
-        context.log("[" + WorkerContextListener.class.getName() + "] INFO : started " + workers.size() + " worker(s)");
+        context.log("[" + WorkerContextListener.class.getName() + "] started " + workers.size() + " worker(s)");
     }
 
     /**
@@ -155,11 +155,11 @@ public class WorkerContextListener implements ServletContextListener {
                 workerThread.join(1000);
             }
             catch (InterruptedException e) {
-                context.log("[" + WorkerContextListener.class.getName() + "] INFO: interrupted", e);
+                context.log("[" + WorkerContextListener.class.getName() + "] interrupted");
                 Thread.currentThread().interrupt();
             }
             catch (Exception e) {
-                context.log("[" + WorkerContextListener.class.getName() + "] WARN: ignoring exception", e);
+                context.log("[" + WorkerContextListener.class.getName() + "] ignoring exception " + e);
             }
         }
         /*
@@ -167,9 +167,9 @@ public class WorkerContextListener implements ServletContextListener {
         catch (InterruptedException e) {
             // SEVERE: The web application [/] appears to have started a thread named [worker_1]
             // but has failed to stop it. This is very likely to create a memory leak.
-            context.log("[" + WorkerContextListener.class.getName() + "] INFO: ignoring interrupt", e);
+            context.log("[" + WorkerContextListener.class.getName() + "] ignoring interrupt " + e);
         } */
-        context.log("[" + WorkerContextListener.class.getName() + "] INFO: stopped " + workers.size() + " worker(s)");
+        context.log("[" + WorkerContextListener.class.getName() + "] stopped " + workers.size() + " worker(s)");
     }
 
     protected RubyWorker newRubyWorker(final Ruby runtime, final String script, final String fileName) {
@@ -186,7 +186,7 @@ public class WorkerContextListener implements ServletContextListener {
             if ( count != null ) return Integer.parseInt(count);
         }
         catch (NumberFormatException e) {
-            context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
+            context.log("[" + WorkerContextListener.class.getName() + "] " +
                         "could not parse " + THREAD_COUNT_KEY + " parameter value = " + count, e);
         }
         return 1;
@@ -203,7 +203,7 @@ public class WorkerContextListener implements ServletContextListener {
             }
         }
         catch (NumberFormatException e) {
-            context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
+            context.log("[" + WorkerContextListener.class.getName() + "] " +
                         "could not parse " + THREAD_PRIORITY_KEY + " parameter value = " + priority, e);
         }
         return Thread.NORM_PRIORITY;
@@ -222,8 +222,8 @@ public class WorkerContextListener implements ServletContextListener {
                 return new String [] { null, script };
             }
             else {
-                context.log("[" + WorkerContextListener.class.getName() + "] WARN: " +
-                            "unsupported worker name: '" + worker + "'");
+                context.log("[" + WorkerContextListener.class.getName() + "] " +
+                            "unsupported worker name: '" + worker + "' !");
             }
         }
 
@@ -274,7 +274,7 @@ public class WorkerContextListener implements ServletContextListener {
                 put("delayed_job", "delayed/start_worker.rb");
                 put("delayed", "delayed/start_worker.rb"); // alias
                 put("navvy", "navvy/start_worker.rb");
-                put("resque", "resque/start_worker.rb");
+                //put("resque", "resque/start_worker.rb");
             }
 
         };

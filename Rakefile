@@ -156,31 +156,56 @@ task :'test:compile' => :compile do
   end
 end
 
-desc "run tests"
-task :test => :'test:compile' do
-  mkdir_p TEST_RESULTS_DIR
-  ant.junit :fork => true,
-            :haltonfailure => false,
-            :haltonerror => true,
-            :showoutput => true,
-            :printsummary => true do
+task :'bundler:setup' do
+  begin
+    require 'bundler/setup'
+  rescue
+    puts "Please install Bundler and run `bundle install` to ensure you have all dependencies"
+  end
+  require 'appraisal'
+end
 
-    classpath :refid => "main.class.path"
-    classpath :refid => "test.class.path"
-    classpath do
-      pathelement :path => MAIN_BUILD_DIR
-      pathelement :path => TEST_BUILD_DIR
-    end
+namespace :test do
+  
+  desc "run ruby tests"
+  task :ruby => 'bundler:setup' do
+    Rake::Task['jar'].invoke unless File.exists?(out_jar_path)
+    test = ENV['TEST'] || File.join(Dir.getwd, "src/test/ruby/**/*_test.rb")
+    test_opts = (ENV['TESTOPTS'] || '').split(' ')
+    test_opts = test_opts.push *FileList[test].to_a
+    ruby "-Isrc/main/ruby:src/test/ruby", "-S", "testrb", *test_opts
+  end
+  
+  desc "run java tests"
+  task :java => :'test:compile' do
+    mkdir_p TEST_RESULTS_DIR
+    ant.junit :fork => true,
+              :haltonfailure => false,
+              :haltonerror => true,
+              :showoutput => true,
+              :printsummary => true do
 
-    formatter :type => "xml"
+      classpath :refid => "main.class.path"
+      classpath :refid => "test.class.path"
+      classpath do
+        pathelement :path => MAIN_BUILD_DIR
+        pathelement :path => TEST_BUILD_DIR
+      end
 
-    batchtest :fork => "yes", :todir => TEST_RESULTS_DIR do
-      fileset :dir => TEST_SRC_DIR do
-        include :name => "**/*Test.java"
+      formatter :type => "xml"
+
+      batchtest :fork => "yes", :todir => TEST_RESULTS_DIR do
+        fileset :dir => TEST_SRC_DIR do
+          include :name => "**/*Test.java"
+        end
       end
     end
   end
+  
 end
+
+desc "run all tests"
+task :test => [ 'test:java', 'test:ruby' ]
 
 desc "clean up"
 task :clean do

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd"
+    version="2.4">
+
+    <display-name>JRuby Application Template</display-name>
+    <description>
+	    Sample deployment descriptor for a JRuby on Rails application.
+    </description>
+    
+    <!-- Rails (threadsafe! due max.runtimes == 1) configuration : -->
+    
+    <context-param>
+        <param-name>rails.env</param-name>
+        <param-value>production</param-value>
+    </context-param>
+    <context-param>
+        <param-name>public.root</param-name>
+        <param-value>/</param-value>
+    </context-param>
+
+    <context-param>
+        <param-name>jruby.min.runtimes</param-name>
+        <param-value>1</param-value>
+    </context-param>
+    <context-param>
+        <param-name>jruby.max.runtimes</param-name>
+        <param-value>1</param-value>
+    </context-param>
+
+    <filter>
+        <filter-name>RackFilter</filter-name>
+        <filter-class>org.jruby.rack.RackFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>RackFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <listener>
+        <listener-class>org.jruby.rack.rails.RailsServletContextListener</listener-class>
+    </listener>
+
+    <!-- Worker setup including optional configuration parameters : -->
+
+    <!-- declaratively configure a worker : -->
+    <context-param>
+        <param-name>jruby.worker</param-name>
+        <param-value>delayed_job</param-value>
+    </context-param>
+    <!-- or use an inline worker script : -->
+    <!--
+    <context-param>
+        <param-name>jruby.worker.script</param-name>
+        <param-value>
+            require 'delayed/jruby_worker'; 
+            Delayed::JRubyWorker.new.start
+        </param-value>
+    </context-param>-->
+    <!-- if you script is located in a (.rb) file use : -->
+    <!--
+    <context-param>
+        <param-name>jruby.worker.script.path</param-name>
+        <param-value>delayed/start_worker.rb</param-value>
+    </context-param>-->
+    <!-- (note that jruby.worker.script and jruby.worker.script.path params are 
+         mutually exclusive and jruby.worker.script takes precedence !) -->
+    <!-- if one worker thread is not enough, increase the value (defaults to 1) : -->
+    <context-param>
+        <param-name>jruby.worker.thread.count</param-name>
+        <param-value>1</param-value>
+    </context-param>
+    <!-- you might also change the worker thread's priority (use with caution) : -->
+    <!-- accepted values are MIN, MAX, NORM and values <1..10> (default is NORM) -->
+    <context-param>
+        <param-name>jruby.worker.thread.priority</param-name>
+        <param-value>NORM</param-value><!-- NORM == 5, MIN == 1, MAX == 10 -->
+    </context-param>
+
+    <!-- mandatory - make sure it's declared after the org.jruby.rack... listener : -->
+    <listener>
+        <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
+    </listener>
+
+</web-app>
