@@ -29,32 +29,66 @@ public class WorkerThreadFactory implements ThreadFactory {
     /**
      * Thread name identifier, all threads created with this factory
      * contain the given identifier.
+     * 
+     * NOTE: The general convention is that native thread names contain the word 
+     * "worker" to easy identifying worker threads whenever needed.
      */
-    public static final String NAME_ID = "jruby-rack-worker_";
+    public static final String NAME_ID = "jruby-rack-worker#";
     
     static final AtomicInteger threadCount = new AtomicInteger(1);
 
     private final String prefix;
 
-    private final int priority;
+    private boolean daemonizeThreads = true;
+    
+    private volatile int priority; // priorities index if priorities != null
+    private final int[] priorities;
 
     private final ThreadGroup group;
 
     public WorkerThreadFactory(final String prefix, final int priority) {
-        this.priority = priority;
+        this(prefix, null, priority);
+    }
+
+    public WorkerThreadFactory(final String prefix, final int[] priorities) {
+        this(prefix, priorities, 0);
+    }
+    
+    private WorkerThreadFactory(final String prefix, final int[] priorities, final int priority) {
+        this.priorities = priorities; this.priority = priority;
         this.prefix = ( prefix == null || prefix.length() == 0 ) ? "" : prefix + '-';
         final SecurityManager securityManager = System.getSecurityManager();
-        group = ( securityManager != null ) ?
+        this.group = ( securityManager != null ) ?
                     securityManager.getThreadGroup() :
                         Thread.currentThread().getThreadGroup();
     }
-
+    
     public Thread newThread(final Runnable task) {
         final String threadName = prefix + NAME_ID + threadCount.getAndIncrement();
         final Thread thread = new Thread(group, task, threadName, 0);
-        if ( ! thread.isDaemon() ) thread.setDaemon(true);
-        if ( thread.getPriority() != priority ) thread.setPriority(priority);
+        if ( isDaemonizeThreads() && ! thread.isDaemon() ) thread.setDaemon(true);
+        thread.setPriority( nextThreadPriority() );
         return thread;
     }
 
+    public boolean isDaemonizeThreads() {
+        return daemonizeThreads;
+    }
+
+    public void setDaemonizeThreads(boolean daemonizeThreads) {
+        this.daemonizeThreads = daemonizeThreads;
+    }
+    
+    protected int nextThreadPriority() {
+        if (priorities != null) {
+            synchronized(this) {
+                if (priority >= priorities.length) {
+                    priority = 0;
+                }
+                return priorities[ priority++ ];
+            }
+        }
+        return priority;
+    }
+    
 }

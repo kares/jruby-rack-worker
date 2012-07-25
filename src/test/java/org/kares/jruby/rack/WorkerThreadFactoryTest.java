@@ -24,6 +24,8 @@ import static org.junit.Assert.*;
  */
 public class WorkerThreadFactoryTest {
 
+    private static Runnable DUMMY_RUNNABLE = new Runnable() { public void run() { return; } };
+    
     @Test
     public void shouldCreateNewThreadsOnEachNewThreadCall() {
         WorkerThreadFactory factory = new WorkerThreadFactory("", 1);
@@ -77,15 +79,42 @@ public class WorkerThreadFactoryTest {
     @Test
     public void newThreadsShouldHaveTheGivenPriority() {
         WorkerThreadFactory factory = new WorkerThreadFactory(null, 2);
-        Thread thread = factory.newThread(new Runnable() {
-
-            public void run() { return; }
-
-        });
+        Thread thread = factory.newThread(DUMMY_RUNNABLE);
         assertNotNull(thread);
         assertEquals(2, thread.getPriority());
     }
 
+    @Test
+    public void newThreadsShouldBeCreatedWithGivenPriorities() {
+        final int[] priorities = { 1, 2, 3 };
+        WorkerThreadFactory factory = new WorkerThreadFactory(null, priorities);
+        Thread thread;
+        
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(1, thread.getPriority());
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(2, thread.getPriority());
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(3, thread.getPriority());
+        
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(1, thread.getPriority());
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(2, thread.getPriority());
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(3, thread.getPriority());
+        
+        thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull(thread);
+        assertEquals(1, thread.getPriority());
+    }
+    
     @Test
     public void newThreadsShouldBeSetToDaemon() {
         WorkerThreadFactory factory = new WorkerThreadFactory(null, 1);
@@ -101,26 +130,25 @@ public class WorkerThreadFactoryTest {
     @Test
     public void newThreadsShouldNotYetBeStarted() {
         WorkerThreadFactory factory = new WorkerThreadFactory("", 1);
-        Thread thread = factory.newThread(new Runnable() {
-
-            public void run() { return; }
-
-        });
+        Thread thread = factory.newThread(DUMMY_RUNNABLE);
         assertNotNull(thread);
         assertFalse( thread.isAlive() );
     }
 
     @Test
     public void newThreadsShouldHaveGivenPrefixInName() {
-        WorkerThreadFactory factory = new WorkerThreadFactory("prefix", 1);
-        Thread thread = factory.newThread(new Runnable() {
-
-            public void run() { return; }
-
-        });
+        WorkerThreadFactory factory = new WorkerThreadFactory("prefix-", 1);
+        Thread thread = factory.newThread(DUMMY_RUNNABLE);
         assertNotNull( thread.getName() );
-        assertTrue( thread.getName().startsWith("prefix") );
         assertTrue( thread.getName().startsWith("prefix-") );
     }
 
+    @Test
+    public void newThreadsShouldHaveCommonNameIdInName() {
+        WorkerThreadFactory factory = new WorkerThreadFactory("prefix-", 1);
+        Thread thread = factory.newThread(DUMMY_RUNNABLE);
+        assertNotNull( thread.getName() );
+        assertTrue( thread.getName().indexOf("jruby-rack-worker") > 0 );
+    }
+    
 }
