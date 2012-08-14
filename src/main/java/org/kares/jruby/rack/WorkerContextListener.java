@@ -34,7 +34,6 @@ import org.jruby.Ruby;
 import org.jruby.rack.RackApplication;
 import org.jruby.rack.RackApplicationFactory;
 import org.jruby.rack.RackInitializationException;
-import org.jruby.rack.RackServletContextListener;
 
 /**
  * A context listener that spawns worker threads.
@@ -104,7 +103,7 @@ public class WorkerContextListener implements ServletContextListener {
             final String message = 
                     RackApplicationFactory.class.getName() + " not yet initialized - " +
                     "seems this listener is executing before the " +
-                    RackServletContextListener.class.getName() + "/RailsSevletContextListener !";
+                    "RackServletContextListener / RailsSevletContextListener !";
             context.log("[" + WorkerContextListener.class.getName() + "] " + message);
             throw new IllegalStateException(message);
         }
@@ -274,7 +273,7 @@ public class WorkerContextListener implements ServletContextListener {
                 put("delayed_job", "delayed/start_worker.rb");
                 put("delayed", "delayed/start_worker.rb"); // alias
                 put("navvy", "navvy/start_worker.rb");
-                //put("resque", "resque/start_worker.rb");
+                put("resque", "resque/start_worker.rb");
             }
 
         };

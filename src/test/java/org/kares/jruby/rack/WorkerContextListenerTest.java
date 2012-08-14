@@ -54,7 +54,8 @@ public class WorkerContextListenerTest {
         when( servletContext.getAttribute("rack.factory") ).thenReturn( null );
 
         target.contextInitialized( newMockServletContextEvent(servletContext) );
-        verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] ERROR") );
+        verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] " + 
+                "org.jruby.rack.RackApplicationFactory not yet initialized") );
     }
 
     @Test
@@ -69,7 +70,8 @@ public class WorkerContextListenerTest {
 
         verify( servletContext ).getInitParameter( "jruby.worker" );
         verify( servletContext ).getInitParameter( "jruby.worker.script" );
-        verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] WARN") );
+        verify( servletContext ).log( startsWith("[" + WorkerContextListener.class.getName() + "] " + 
+                "no worker script to execute") );
     }
 
     @Test
