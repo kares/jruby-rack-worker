@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 Karol Bucek
+ * Copyright (c) 2012 Karol Bucek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.kares.jruby.rack;
+package org.kares.jruby;
 
 import org.jruby.Ruby;
 
 /**
- * A Ruby worker.
+ * Ruby (JRuby) worker.
  *
  * @author kares <self_AT_kares_DOT_org>
  */

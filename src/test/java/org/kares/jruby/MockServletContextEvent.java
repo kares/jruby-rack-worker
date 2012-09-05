@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 Karol Bucek
+ * Copyright (c) 2012 Karol Bucek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kares.jruby.rack;
+package org.kares.jruby;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
@@ -22,18 +22,10 @@ import javax.servlet.ServletContextEvent;
 /**
  * @author kares <self_AT_kares_DOT_org>
  */
-class MockServletContextEvent extends ServletContextEvent {
+public class MockServletContextEvent extends ServletContextEvent {
 
-    private ServletContext servletContext;
-
-    MockServletContextEvent(final ServletContext servletContext) {
+    public MockServletContextEvent(final ServletContext servletContext) {
         super(servletContext);
-        this.servletContext = servletContext;
-    }
-
-    @Override
-    public ServletContext getServletContext() {
-        return servletContext;
     }
 
     @Override

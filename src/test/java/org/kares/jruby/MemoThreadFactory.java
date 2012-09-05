@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 Karol Bucek
+ * Copyright (c) 2012 Karol Bucek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kares.jruby.rack;
+package org.kares.jruby;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,26 +23,30 @@ import java.util.concurrent.ThreadFactory;
 /**
  * @author kares <self_AT_kares_DOT_org>
  */
-class MemoThreadFactory implements ThreadFactory {
+public class MemoThreadFactory implements ThreadFactory {
 
     private final ThreadFactory delegate;
     
-    final List<Thread> returnedThreads;
+    private final List<Thread> createdThreads;
 
-    MemoThreadFactory(ThreadFactory delegate) {
+    public MemoThreadFactory(ThreadFactory delegate) {
         this.delegate = delegate;
-        this.returnedThreads = new ArrayList<Thread>();
+        this.createdThreads = new ArrayList<Thread>();
     }
 
-    MemoThreadFactory(ThreadFactory delegate, List<Thread> returnedThreads) {
+    public MemoThreadFactory(ThreadFactory delegate, List<Thread> returnedThreads) {
         this.delegate = delegate;
-        this.returnedThreads = returnedThreads;
+        this.createdThreads = returnedThreads;
     }
 
     public Thread newThread(Runnable runnable) {
         Thread thread = delegate.newThread(runnable);
-        returnedThreads.add( thread );
+        createdThreads.add( thread );
         return thread;
     }
 
+    public List<Thread> getCreatedThreads() {
+        return createdThreads;
+    }
+    
 }
