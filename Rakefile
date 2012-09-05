@@ -135,7 +135,7 @@ task :gem => [ :jar ] do
         "Useful if you'd like to run a worker loop (such as Delayed::Job or Resque) " +
         "as part of your web-application (concurrently in a separate thread) " + 
         "instead of using a separate process. To be used with a servlet containers."
-      spec.add_dependency 'jruby-rack', ">= 1.1.1"
+      spec.add_dependency 'jruby-rack', ">= 1.1.10"
       spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
       spec.has_rdoc = false
       spec.rubyforge_project = '[none]'
