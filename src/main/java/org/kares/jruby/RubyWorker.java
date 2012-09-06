@@ -52,8 +52,8 @@ public class RubyWorker implements Runnable {
     }
 
     public void stop() {
-        // @TODO jruby-rack manages the runtimes thus let it terminate !?
-        if ( true ) runtime.tearDown();
+        // NOTE: we did not create the runtime, thus we do not tear-down !
+        // if ( true ) runtime.tearDown();
     }
 
 }
