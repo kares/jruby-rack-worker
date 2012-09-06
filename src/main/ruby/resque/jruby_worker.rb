@@ -1,7 +1,11 @@
 require 'resque' unless defined?(Resque::Worker)
+require 'java'
+require 'jruby'
+require 'logger'
 
 module Resque
-  
+  # Thread-safe worker usable with JRuby, adapts most of the methods designed
+  # to be used in a process per worker env to behave safely in concurrent env.
   class JRubyWorker < Worker
     
     def initialize(*queues)
@@ -9,42 +13,10 @@ module Resque
       @cant_fork = true
     end
     
-    # similar to resque's original pruning but thread-based
-    def prune_dead_workers
-      all_workers = Worker.all
-      known_workers = worker_threads unless all_workers.empty?
-      all_workers.each do |worker|
-        uuid, thread, queues = worker.id.split(':')
-        next unless uuid == hostuuid
-        next if known_workers.include?(thread)
-        log! "Pruning dead worker: #{worker}"
-        worker.unregister_worker
-      end
-    end
-
-    # returns worker thread names that supposely belong to the current application
-    def worker_threads
-      thread_group = java.lang.Thread.currentThread.getThreadGroup
-      thread_class = java.lang.Thread.java_class
-      threads = java.lang.reflect.Array.newInstance(thread_class, thread_group.activeCount)
-      thread_group.enumerate(threads)
-      # NOTE: we shall check the name from $servlet_context.getServletContextName
-      # but that's an implementation detail of the initialize currently that threads
-      # are named including their context name. however thread group should be fine
-      threads.map do |thread| 
-        name_id = org.kares.jruby.rack.WorkerThreadFactory::NAME_ID
-        thread && thread.getName.index(name_id) ? thread.getName : nil
-      end.compact
-    end
-    
-    # makes no sense to be used here
-    def worker_pids
-      nil
-    end
-    
     # reserve changed since version 1.20.0
     RESERVE_ARG = instance_method(:reserve).arity > 0 # :nodoc
     
+    # @see Resque::Worker#work
     def work(interval = 5.0, &block)
       interval = Float(interval)
       procline "Starting" # do not change $0
@@ -85,64 +57,143 @@ module Resque
       unregister_worker
     end
     
-    # no forking with JRuby
-    def fork
+    # No forking with JRuby !
+    # @see Resque::Worker#fork
+    def fork # :nodoc
       @cant_fork = true
       nil # important due #work
     end
 
-    # we're definitely not REE
-    def enable_gc_optimizations
-      nil
+    # @see Resque::Worker#enable_gc_optimizations
+    def enable_gc_optimizations # :nodoc
+      nil # we're definitely not REE
     end
     
-    # Runs all the methods needed when a worker begins its lifecycle.
+    # @see Resque::Worker#startup
     def startup
       # we do not register_signal_handlers
       prune_dead_workers
       run_hook :before_first_fork
       register_worker
+      update_native_thread_name
     end
 
+    # @see Resque::Worker#pause
     def pause
       # trap('CONT') makes no sense here
       sleep(1.0)
     end
     
+    # @see Resque::Worker#pause_processing
     def pause_processing
       log "pausing job processing"
       @paused = true
     end
     
+    # @see Resque::Worker#inspect
     def inspect
       "#<JRubyWorker #{to_s}>"
     end
     
+    # @see Resque::Worker#to_s
     def to_s
-      @to_s ||= "#{hostuuid}:#{java.lang.Thread.currentThread.getName}:#{@queues.join(',')}".freeze
+      @to_s ||= "#{hostname}:#{pid}[#{thread_id}]:#{@queues.join(',')}".freeze
     end
     alias_method :id, :to_s
     
-    def hostuuid
-      self.class.global_uuid
+    # @see Resque::Worker#hostname
+    def hostname
+      java.net.InetAddress.getLocalHost.getHostName
     end
     
-    def pid
-      # we do not rely on pids thus do not fail ever
-      Process.pid rescue nil
+    # @see #worker_thread_ids
+    def thread_id
+      java.lang.Thread.currentThread.getName
     end
     
+    # similar to the original pruning but accounts for thread-based workers
+    # @see Resque::Worker#prune_dead_workers
+    def prune_dead_workers
+      all_workers = self.class.all
+      known_workers = worker_thread_ids unless all_workers.empty?
+      pids = nil, hostname = self.hostname
+      all_workers.each do |worker|
+        # thread name might contain ':' thus split it first :
+        id = worker.id.split(/\[(.*?)\]/)
+        thread = id.delete_at(1)
+        host, pid, queues = id.join.split(':')
+        next if host != hostname
+        next if known_workers.include?(thread) && pid == self.pid.to_s
+        # NOTE: allow flexibility of running workers :
+        # 1. worker might run in another JVM instance
+        # 2. worker might run as a process (with MRI)
+        next if (pids ||= system_pids).include?(pid)
+        log! "Pruning dead worker: #{worker}"
+        worker.unregister_worker
+      end
+    end
+
+    WORKER_THREAD_ID = 'worker'.freeze
+    
+    # returns worker thread names that supposely belong to the current application
+    def worker_thread_ids
+      thread_group = java.lang.Thread.currentThread.getThreadGroup
+      thread_class = java.lang.Thread.java_class
+      threads = java.lang.reflect.Array.newInstance(thread_class, thread_group.activeCount)
+      thread_group.enumerate(threads)
+      # NOTE: we shall check the name from $servlet_context.getServletContextName
+      # but that's an implementation detail of the factory currently that threads
+      # are named including their context name. thread grouping should be fine !
+      threads.map do |thread| # a convention is to name threads as "worker" :
+        thread && thread.getName.index(WORKER_THREAD_ID) ? thread.getName : nil
+      end.compact
+    end
+    
+    # Similar to Resque::Worker#worker_pids but without the worker.pid files.
+    # Since this is only used to #prune_dead_workers it's fine to return PIDs
+    # that have nothing to do with resque, it's only important that those PIDs
+    # contain processed that are currently live on the system and perform work.
+    # 
+    # Thus the naive implementation to return all PIDs running within the OS 
+    # (under current user) is acceptable.
+    def system_pids
+      pids = `ps -e -o pid`.split("\n")
+      pids.delete_at(0) # PID (header)
+      pids.each(&:'strip!')
+    end
+    require 'rbconfig'
+    if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/i
+      require 'csv'
+      def system_pids
+        pids_csv = `tasklist.exe /FO CSV /NH` # /FI "PID gt 1000" 
+        # sample output :
+        # "System Idle Process","0","Console","0","16 kB"
+        # "System","4","Console","0","228 kB"
+        # "smss.exe","1056","Console","0","416 kB"
+        # "csrss.exe","1188","Console","0","5,276 kB"
+        # "winlogon.exe","1212","Console","0","4,708 kB"
+        pids = CSV.parse(pids_csv).map! { |record| record[1] }
+        pids.delete_at(0) # no CSV header thus first row nil
+        pids
+      end
+    end
+    
+    protected
+    
+    # @see Resque::Worker#register_worker
     def register_worker
       outcome = super
       system_register_worker
       outcome
     end
     
+    # @see Resque::Worker#unregister_worker
     def unregister_worker
       system_unregister_worker
       super
     end
     
+    # @see Resque::Worker#procline
     def procline(string = nil)
       # do not change $0 as this method otherwise would ...
       if string.nil?
@@ -153,28 +204,55 @@ module Resque
     end
 
     # Log a message to STDOUT if we are verbose or very_verbose.
+    # @see Resque::Worker#log
     def log(message)
       if verbose
-        logdev.puts "*** #{message}"
+        logger.info "*** #{message}"
       elsif very_verbose
         time = Time.now.strftime('%H:%M:%S %Y-%m-%d')
         name = java.lang.Thread.currentThread.getName
-        logdev.puts "** [#{time}] #{name}: #{message}"
+        logger.debug "** [#{time}] #{name}: #{message}"
       end
     end
     
     public
     
-    def logdev
-      # resque compatibility - stdout puts by default
-      @logdev ||= STDOUT
+    def logger
+      # resque compatibility - stdout by default
+      @logger ||= begin 
+        logger = Logger.new(STDOUT)
+        logger.level = Logger::WARN
+        logger.level = Logger::INFO if verbose
+        logger.level = Logger::DEBUG if very_verbose
+        logger
+      end
     end
     
-    def logdev=(logdev)
-      @logdev = logdev
+    # We route log output through a logger 
+    # (instead of printing directly to stdout).
+    def logger=(logger)
+      @logger = logger
     end
     
     private
+    
+    # so that we can later identify a "live" worker thread
+    def update_native_thread_name
+      thread = JRuby.reference(Thread.current)
+      set_thread_name = Proc.new do |prefix, suffix|
+        self.class.with_global_lock do
+          count = self.class.system_registered_workers.size
+          thread.native_thread.name = "#{prefix}##{count}#{suffix}"
+        end
+      end
+      if ! name = thread.native_thread.name
+        # "#{THREAD_ID}##{count}" :
+        set_thread_name.call(WORKER_THREAD_ID, nil)
+      elsif ! name.index(WORKER_THREAD_ID)
+        # "#{name}(#{THREAD_ID}##{count})" :
+        set_thread_name.call("#{name} (#{WORKER_THREAD_ID}", ')')
+      end
+    end
     
     WORKERS_KEY = 'resque.workers'.freeze
     
@@ -225,7 +303,7 @@ module Resque
         $serlet_context.synchronized(&block)
       end
       
-    else
+    else # no $servlet_context assume 1 app within server/JVM (e.g. mizuno)
       
       def self.fetch_global_property(key) # :nodoc
         with_global_lock do
@@ -247,27 +325,6 @@ module Resque
         java.lang.System.java_class.synchronized(&block)
       end
       
-    end
-    
-    UUID_KEY = 'resque.uuid'.freeze
-    
-    # returns a unique identifier value for this JVM
-    # 
-    # a single value per JVM is fine ... it will be added to the hostname
-    # to support cases when 2 JVMs run on a single host and thus we're able
-    # to distinguish them (we won't touch workers from the othe process)
-    def self.global_uuid # :nodoc
-      uuid = java.lang.System.getProperty(UUID_KEY)
-      unless uuid
-        java.lang.System.java_class.synchronized do 
-          uuid = java.lang.System.getProperty(UUID_KEY)
-          unless uuid
-            uuid = java.util.UUID.randomUUID.toString[0...18].gsub('-', '')
-            java.lang.System.setProperty(UUID_KEY, uuid)
-          end
-        end
-      end
-      uuid # e.g. "6cf793450cbb4999"
     end
     
   end
