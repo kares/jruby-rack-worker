@@ -202,7 +202,9 @@ module Resque
         log! @procline = "resque-#{Resque::Version}: #{string}"
       end
     end
-
+    
+    public
+    
     # Log a message to STDOUT if we are verbose or very_verbose.
     # @see Resque::Worker#log
     def log(message)
@@ -214,8 +216,6 @@ module Resque
         logger.debug "** [#{time}] #{name}: #{message}"
       end
     end
-    
-    public
     
     def logger
       # resque compatibility - stdout by default
