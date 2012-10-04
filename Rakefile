@@ -162,7 +162,7 @@ task :'bundler:setup' do
   rescue
     puts "Please install Bundler and run `bundle install` to ensure you have all dependencies"
   end
-  require 'appraisal'
+  #require 'appraisal'
 end
 
 namespace :test do
