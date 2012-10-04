@@ -205,12 +205,12 @@ module Resque
     # Log a message to STDOUT if we are verbose or very_verbose.
     # @see Resque::Worker#log
     def log(message)
-      if verbose
-        logger.info "*** #{message}"
-      elsif very_verbose
+      if very_verbose
         time = Time.now.strftime('%H:%M:%S %Y-%m-%d')
         name = java.lang.Thread.currentThread.getName
         logger.debug "** [#{time}] #{name}: #{message}"
+      elsif verbose
+        logger.info "*** #{message}"
       end
     end
     

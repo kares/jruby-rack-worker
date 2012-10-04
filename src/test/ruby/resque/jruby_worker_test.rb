@@ -154,6 +154,22 @@ module Resque
       new_worker.prune_dead_workers
     end
     
+    test "uses logger.info when logging verbose" do
+      worker = new_worker
+      worker.verbose = true
+      worker.logger = logger = mock('logger')
+      logger.expects(:info).once.with { |msg| msg =~ /huu!/ }
+      worker.log 'huu!'
+    end
+
+    test "uses logger.debug when logging very-verbose" do
+      worker = new_worker
+      worker.very_verbose = true
+      worker.logger = logger = mock('logger')
+      logger.expects(:debug).once.with { |msg| msg =~ /huu!/ }
+      worker.log 'huu!'
+    end
+    
     begin
       require 'redis/client'
       Redis::Client.new.connect
