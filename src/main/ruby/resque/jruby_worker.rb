@@ -118,10 +118,7 @@ module Resque
       known_workers = worker_thread_ids unless all_workers.empty?
       pids = nil, hostname = self.hostname
       all_workers.each do |worker|
-        # thread name might contain ':' thus split it first :
-        id = worker.id.split(/\[(.*?)\]/)
-        thread = id.delete_at(1)
-        host, pid, queues = id.join.split(':')
+        host, pid, thread, queues = self.class.split_id(worker.id)
         next if host != hostname
         next if known_workers.include?(thread) && pid == self.pid.to_s
         # NOTE: allow flexibility of running workers :
@@ -178,8 +175,6 @@ module Resque
       end
     end
     
-    protected
-    
     # @see Resque::Worker#register_worker
     def register_worker
       outcome = super
@@ -192,6 +187,8 @@ module Resque
       system_unregister_worker
       super
     end
+    
+    protected
     
     # @see Resque::Worker#procline
     def procline(string = nil)
@@ -327,5 +324,34 @@ module Resque
       
     end
     
+    def self.split_id(worker_id, split_thread = true)
+      # thread name might contain ':' thus split it first :
+      id = worker_id.split(/\[(.*?)\]/)
+      thread = id.delete_at(1)
+      host, pid, queues = id.join.split(':')
+      split_thread ? [ host, pid, thread, queues ] : [ host, pid ,queues ]
+    end
+    
+  end
+  
+  Worker.class_eval do
+    # Returns a single worker object. Accepts a string id.
+    def self.find(worker_id)
+      if exists? worker_id
+        # NOTE: a pack so that Resque::Worker.find returns
+        # correct JRubyWorker class for thread-ed workers:
+        host, pid, thread, queues = JRubyWorker.split_id(worker_id)
+        queues = queues.split(',')
+        if thread # "#{hostname}:#{pid}[#{thread_id}]:#{@queues.join(',')}"
+          worker = JRubyWorker.new(*queues)
+        else
+          worker = new(*queues) # super
+        end
+        worker.to_s = worker_id
+        worker
+      else
+        nil
+      end
+    end
   end
 end

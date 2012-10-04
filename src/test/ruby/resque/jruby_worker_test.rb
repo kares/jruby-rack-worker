@@ -154,6 +154,41 @@ module Resque
       new_worker.prune_dead_workers
     end
     
+    begin
+      require 'redis/client'
+      Redis::Client.new.connect
+      # context "REDIS" do
+      
+      test "worker exists after it's started" do
+        worker = Resque::JRubyWorker.new('foo')
+        assert_false Resque::Worker.exists?(worker.id)
+        worker.startup
+        assert_true Resque::Worker.exists?(worker.id), 
+          "#{worker} does not exist in: #{Resque::Worker.all.inspect}"
+        assert_equal worker, Resque::Worker.find(worker.to_s)
+      end
+
+      test "worker find returns correct class" do
+        worker = Resque::JRubyWorker.new('bar')
+        worker.startup
+        found = Resque::Worker.find(worker.to_s)
+        assert_equal worker.class, found.class
+      end
+
+      test "worker (still) finds a plain-old worker" do
+        worker = Resque::Worker.new('*')
+        worker.startup
+        assert found = Resque::Worker.find(worker.id)
+        assert_equal 'Resque::Worker', found.class.name
+      end
+      
+      # end
+    rescue ( defined?(Redis::CannotConnectError) ? Redis::CannotConnectError : Errno::ECONNREFUSED ) => e
+      warn "[WARNING] skipping tests that depend on redis due #{e.inspect}"
+    end
+    
+    # end # REDIS
+    
     protected
     
     ORIGINAL_0 = $0.dup
