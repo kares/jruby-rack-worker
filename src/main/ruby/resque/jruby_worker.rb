@@ -18,6 +18,7 @@ module Resque
     def initialize(*queues)
       super
       @cant_fork = true
+      @term_child = false
     end
     
     # reserve accepts an interval argument (on master)
