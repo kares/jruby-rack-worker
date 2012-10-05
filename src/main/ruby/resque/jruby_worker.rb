@@ -1,12 +1,19 @@
 require 'resque' unless defined?(Resque::Worker)
-require 'java'
-require 'jruby'
 require 'logger'
 
 module Resque
   # Thread-safe worker usable with JRuby, adapts most of the methods designed
   # to be used in a process per worker env to behave safely in concurrent env.
   class JRubyWorker < Worker
+    
+    begin
+      require 'jruby'
+      require 'java'
+      JRUBY = true
+    rescue LoadError
+      warn "loading Resque::JRubyWorker on non-jruby"
+      JRUBY = false
+    end
     
     def initialize(*queues)
       super
@@ -103,24 +110,25 @@ module Resque
     
     # @see Resque::Worker#hostname
     def hostname
-      java.net.InetAddress.getLocalHost.getHostName
+      JRUBY ? java.net.InetAddress.getLocalHost.getHostName : super
     end
     
     # @see #worker_thread_ids
     def thread_id
-      java.lang.Thread.currentThread.getName
+      JRUBY ? java.lang.Thread.currentThread.getName : nil
     end
     
     # similar to the original pruning but accounts for thread-based workers
     # @see Resque::Worker#prune_dead_workers
     def prune_dead_workers
       all_workers = self.class.all
-      known_workers = worker_thread_ids unless all_workers.empty?
+      return if all_workers.empty?
+      known_workers = JRUBY ? worker_thread_ids : []
       pids = nil, hostname = self.hostname
       all_workers.each do |worker|
         host, pid, thread, queues = self.class.split_id(worker.id)
         next if host != hostname
-        next if known_workers.include?(thread) && pid == self.pid.to_s
+        next if thread && known_workers.include?(thread) && pid == self.pid.to_s
         # NOTE: allow flexibility of running workers :
         # 1. worker might run in another JVM instance
         # 2. worker might run as a process (with MRI)
@@ -178,13 +186,13 @@ module Resque
     # @see Resque::Worker#register_worker
     def register_worker
       outcome = super
-      system_register_worker
+      system_register_worker if JRUBY
       outcome
     end
     
     # @see Resque::Worker#unregister_worker
     def unregister_worker
-      system_unregister_worker
+      system_unregister_worker if JRUBY
       super
     end
     
@@ -326,8 +334,7 @@ module Resque
     
     def self.split_id(worker_id, split_thread = true)
       # thread name might contain ':' thus split it first :
-      id = worker_id.split(/\[(.*?)\]/)
-      thread = id.delete_at(1)
+      id = worker_id.split(/\[(.*?)\]/); thread = id.delete_at(1)
       host, pid, queues = id.join.split(':')
       split_thread ? [ host, pid, thread, queues ] : [ host, pid ,queues ]
     end
