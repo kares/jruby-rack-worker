@@ -4,7 +4,7 @@ Thread based workers on top of [jruby-rack](http://github.com/jruby/jruby-rack).
 
 With out of the box [JRuby](http://jruby.org) "adapters" for: 
 
-* [Resque](http://github.com/defunkt/resque) (**COMING SOON**)
+* [Resque](http://github.com/defunkt/resque)
 * [Delayed::Job](http://github.com/collectiveidea/delayed_job)
 * [Navvy](http://github.com/jeffkreeftmeijer/navvy) 
 
@@ -160,17 +160,23 @@ JRuby "adapted" worker code for inspiration.
 
 ## Build
 
-[JRuby](http://jruby.org) 1.5+ is required to build the project.
+[JRuby](http://jruby.org) 1.6+ is required to build the project.
+
 The build is performed by [rake](http://rake.rubyforge.org) which should be part
 of your JRuby installation, if you're experiencing conflicts with another Ruby and
-it's rake executable use `jruby -S rake` instead of the bare `rake` command.
+it's `rake` executable use `jruby -S rake` instead.
 Besides you'll to need [ant](http://ant.apache.org/) installed for the Java part.
 
-Build the `jruby-rack-worker.jar` using :
+Build the *jruby-rack-worker_[VERSION].jar* using :
 
     rake jar
 
-Build the gem (with the jar packaged) :
+Build the gem (includes the .jar packaged) :
 
     rake gem
 
+
+## Copyright
+
+Copyright (c) 2012 [Karol Bucek](https://github.com/kares). 
+See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.

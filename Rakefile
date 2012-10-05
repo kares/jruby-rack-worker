@@ -129,12 +129,16 @@ task :gem => [ :jar ] do
       spec.authors = ["Karol Bucek"]
       spec.email = ["self@kares.org"]
       spec.homepage = 'http://github.com/kares/jruby-rack-worker'
-      spec.summary = 'Simple Worker with JRuby-Rack'
+      spec.summary = 'Threaded Workers with JRuby-Rack'
       spec.description = 
         "Implements a thread based worker pattern on top of JRuby-Rack. " +
-        "Useful if you'd like to run a worker loop (such as Delayed::Job or Resque) " +
-        "as part of your web-application (concurrently in a separate thread) " + 
-        "instead of using a separate process. To be used with a servlet containers."
+        "Useful if you'd like to run background workers within your (deployed) " + 
+        "web-application (concurrently in 'native' threads) instead of using " + 
+        "separate daemon processes. " +
+        "Provides (thread-safe) implementations for popular worker libraries " + 
+        "such as Resque and Delayed::Job, but one can easily write their own " + 
+        "'daemon' scripts as well."
+      
       spec.add_dependency 'jruby-rack', ">= 1.1.10"
       spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
       spec.has_rdoc = false
