@@ -178,33 +178,57 @@ public abstract class WorkerManager {
         this.threadPrefix = threadPrefix;
     }
     
-    public int getThreadCount() {
-        String count = getParameter(THREAD_COUNT_KEY);
-        try {
-            if ( count != null ) return Integer.parseInt(count);
+    private Integer threadCount;
+    
+    public Integer getThreadCount() {
+        if (threadCount == null) {
+            String count = getParameter(THREAD_COUNT_KEY);
+            try {
+                if ( count != null ) {
+                    return threadCount = Integer.parseInt(count);
+                }
+            }
+            catch (NumberFormatException e) {
+                log("[" + getClass().getName() + "] " +
+                    "could not parse " + THREAD_COUNT_KEY + " parameter value = " + count, e);
+            }
+            threadCount = 1;
         }
-        catch (NumberFormatException e) {
-            log("[" + getClass().getName() + "] " +
-                "could not parse " + THREAD_COUNT_KEY + " parameter value = " + count, e);
-        }
-        return 1;
+        return threadCount;
     }
 
-    public int getThreadPriority() {
-        String priority = getParameter(THREAD_PRIORITY_KEY);
-        try {
-            if ( priority != null ) {
-                if ( "NORM".equalsIgnoreCase(priority) ) return Thread.NORM_PRIORITY;
-                else if ( "MIN".equalsIgnoreCase(priority) ) return Thread.MIN_PRIORITY;
-                else if ( "MAX".equalsIgnoreCase(priority) ) return Thread.MAX_PRIORITY;
-                return Integer.parseInt(priority);
+    public void setThreadCount(Integer threadCount) {
+        this.threadCount = threadCount;
+    }
+    
+    private Integer threadPriority;
+    
+    public Integer getThreadPriority() {
+        if (threadPriority == null) {
+            String priority = getParameter(THREAD_PRIORITY_KEY);
+            try {
+                if ( priority != null ) {
+                    if ( "NORM".equalsIgnoreCase(priority) )
+                        return threadPriority = Thread.NORM_PRIORITY;
+                    else if ( "MIN".equalsIgnoreCase(priority) )
+                        return threadPriority = Thread.MIN_PRIORITY;
+                    else if ( "MAX".equalsIgnoreCase(priority) )
+                        return threadPriority = Thread.MAX_PRIORITY;
+                    return threadPriority = Integer.parseInt(priority);
+                }
             }
+            catch (NumberFormatException e) {
+                log("[" + getClass().getName() + "] " +
+                    "could not parse " + THREAD_PRIORITY_KEY + " parameter value = '" + priority + "'");
+            }
+            threadPriority = Thread.NORM_PRIORITY;
         }
-        catch (NumberFormatException e) {
-            log("[" + getClass().getName() + "] " +
-                "could not parse " + THREAD_PRIORITY_KEY + " parameter value = '" + priority + "'");
-        }
-        return Thread.NORM_PRIORITY;
+        return threadPriority;
+
+    }
+
+    public void setThreadPriority(Integer threadPriority) {
+        this.threadPriority = threadPriority;
     }
     
     /**
