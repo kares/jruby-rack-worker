@@ -154,6 +154,42 @@ module Resque
       new_worker.prune_dead_workers
     end
     
+    test "registers a worker with the system" do
+      worker = new_worker
+      worker.stubs(:redis).returns redis = mock('redis')
+      redis.expects(:sadd).with :workers, worker
+      redis.stubs(:set)
+      worker.register_worker
+      
+      workers = Resque::JRubyWorker.system_registered_workers
+      assert_include workers, worker.id
+    end
+
+    test "unregisters a worker from system" do
+      worker = new_worker
+      worker.send(:system_register_worker)
+      
+      worker.stubs(:redis).returns redis = mock('redis')
+      redis.expects(:srem).with :workers, worker
+      redis.stubs(:get); redis.stubs(:del)
+      worker.unregister_worker
+      
+      workers = Resque::JRubyWorker.system_registered_workers
+      assert_not_include workers, worker.id
+    end
+    
+    test "split worker id" do
+      assert_equal [ 'host', '42', nil, '*' ], 
+        Resque::JRubyWorker.split_id("host:42:*")
+      assert_equal [ 'host', '42', '*' ], 
+        Resque::JRubyWorker.split_id("host:42:*", nil)
+      
+      assert_equal [ 'host', '42', 'thread:main', 'foo,bar' ], 
+        Resque::JRubyWorker.split_id("host:42[thread:main]:foo,bar")
+      assert_equal [ 'host', '42', 'foo,bar' ], 
+        Resque::JRubyWorker.split_id("host:42[thread:main]:foo,bar", nil)
+    end
+    
     test "uses logger.info when logging verbose" do
       worker = new_worker
       worker.verbose = true
@@ -192,10 +228,44 @@ module Resque
       end
 
       test "worker (still) finds a plain-old worker" do
-        worker = Resque::Worker.new('*')
+        worker = Resque::Worker.new('huu')
         worker.startup
         assert found = Resque::Worker.find(worker.id)
         assert_equal 'Resque::Worker', found.class.name
+      end
+
+      class TestJob
+
+        @@performed = nil
+        
+        def self.perform(param = true)
+          puts "#{self}#perform(#{param.inspect})"
+          raise "already performed" if @@performed
+          @@performed = param
+        end
+
+        @queue = :low
+        
+      end
+      
+      test "works (integration)" do
+        worker = Resque::JRubyWorker.new('low')
+        worker.startup
+        Resque.enqueue(TestJob, 42)
+        Thread.new do
+          worker.work(0.25)
+        end
+        sleep(0.30)
+        assert_match /Paused|Waiting for low/, worker.procline
+        
+        assert_equal 42, TestJob.send(:class_variable_get, :'@@performed')
+        
+        workers = Resque::JRubyWorker.system_registered_workers
+        assert_include workers, worker.id
+        worker.shutdown
+        sleep(0.25)
+        workers = Resque::JRubyWorker.system_registered_workers
+        assert_not_include workers, worker.id
       end
       
       # end

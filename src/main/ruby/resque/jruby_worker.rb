@@ -128,7 +128,7 @@ module Resque
       all_workers.each do |worker|
         host, pid, thread, queues = self.class.split_id(worker.id)
         next if host != hostname
-        next if thread && known_workers.include?(thread) && pid == self.pid.to_s
+        next if known_workers.include?(thread) && pid == self.pid.to_s
         # NOTE: allow flexibility of running workers :
         # 1. worker might run in another JVM instance
         # 2. worker might run as a process (with MRI)
@@ -143,8 +143,8 @@ module Resque
     # returns worker thread names that supposely belong to the current application
     def worker_thread_ids
       thread_group = java.lang.Thread.currentThread.getThreadGroup
-      thread_class = java.lang.Thread.java_class
-      threads = java.lang.reflect.Array.newInstance(thread_class, thread_group.activeCount)
+      threads = java.lang.reflect.Array.newInstance(
+        java.lang.Thread.java_class, thread_group.activeCount)
       thread_group.enumerate(threads)
       # NOTE: we shall check the name from $servlet_context.getServletContextName
       # but that's an implementation detail of the factory currently that threads
@@ -196,8 +196,6 @@ module Resque
       super
     end
     
-    protected
-    
     # @see Resque::Worker#procline
     def procline(string = nil)
       # do not change $0 as this method otherwise would ...
@@ -207,8 +205,6 @@ module Resque
         log! @procline = "resque-#{Resque::Version}: #{string}"
       end
     end
-    
-    public
     
     # Log a message to STDOUT if we are verbose or very_verbose.
     # @see Resque::Worker#log
