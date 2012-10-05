@@ -251,6 +251,7 @@ module Resque
       test "works (integration)" do
         worker = Resque::JRubyWorker.new('low')
         worker.startup
+        
         Resque.enqueue(TestJob, 42)
         Thread.new do
           worker.work(0.25)

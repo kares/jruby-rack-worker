@@ -20,8 +20,15 @@ module Resque
       @cant_fork = true
     end
     
-    # reserve changed since version 1.20.0
-    RESERVE_ARG = instance_method(:reserve).arity > 0 # :nodoc
+    # reserve accepts an interval argument (on master)
+    RESERVE_ARG = instance_method(:reserve).arity != 0 # :nodoc
+    # unregister_worker(exception = nil) changed since version 1.20.0
+    UNREGISTER_WORKER_ARG = instance_method(:unregister_worker).arity != 0 # :nodoc
+    
+    if RESERVE_ARG && RUBY_VERSION < '1.9'
+      warn "[WARNING] resque-#{Resque::Version} will most likely " + 
+      "not work correctly with ruby #{RUBY_VERSION} (try --1.9) !"
+    end
     
     # @see Resque::Worker#work
     def work(interval = 5.0, &block)
@@ -39,13 +46,15 @@ module Resque
         
         if job = RESERVE_ARG ? reserve(interval) : reserve
           log "got: #{job.inspect}"
+          
           job.worker = self
           run_hook :before_fork, job
           working_on job
 
           procline "Processing #{job.queue} since #{Time.now.to_i}"
+          
           perform(job, &block)
-
+          
           done_working
         else
           break if interval.zero?
@@ -59,9 +68,14 @@ module Resque
           end
         end
       end
-
-    ensure
+      
       unregister_worker
+    rescue Exception => exception
+      if UNREGISTER_WORKER_ARG
+        unregister_worker(exception)
+      else
+        unregister_worker; raise exception
+      end
     end
     
     # No forking with JRuby !
@@ -85,10 +99,11 @@ module Resque
       update_native_thread_name
     end
 
+    PAUSE_SLEEP = 0.1
+    
     # @see Resque::Worker#pause
     def pause
-      # trap('CONT') makes no sense here
-      sleep(1.0)
+      sleep(PAUSE_SLEEP) # trap('CONT') makes no sense here
     end
     
     # @see Resque::Worker#pause_processing
