@@ -5,7 +5,7 @@ module Resque
   class JRubyWorkerTest < Test::Unit::TestCase
     
     startup do
-      JRuby::Rack::Worker.load_worker_jar
+      JRuby::Rack::Worker.load_jar
     end
     
     test "new fails without a queue arg" do
