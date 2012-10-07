@@ -1,6 +1,11 @@
 begin
   require 'delayed/jruby_worker'
-  worker = Delayed::JRubyWorker.new(:quiet => true)
+  worker = Delayed::JRubyWorker.new(
+    :min_priority => ENV['MIN_PRIORITY'],
+    :max_priority => ENV['MAX_PRIORITY'],
+    :queues => (ENV['QUEUES'] || ENV['QUEUE'] || '').split(','),
+    :quiet => true
+  )
   worker.start
 rescue => e
   if defined?(Rails.logger)
