@@ -42,7 +42,7 @@ public abstract class ServletWorkerManager extends WorkerManager {
     }
     
     @Override
-    protected String getParameter(String key) {
+    public String getParameter(String key) {
         String val = context.getInitParameter(key);
         if (val == null) {
             val = super.getParameter(key);

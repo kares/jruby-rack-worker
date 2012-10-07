@@ -30,6 +30,8 @@ import javax.servlet.ServletContext;
 
 import org.jruby.Ruby;
 import org.jruby.RubyInstanceConfig;
+import org.jruby.javasupport.JavaEmbedUtils;
+import org.jruby.runtime.builtin.IRubyObject;
 
 import org.junit.After;
 import org.junit.Before;
@@ -268,6 +270,20 @@ public class ServletWorkerManagerTest {
         }
     }
 
+    @Test
+    public void exportedItselfIntoTheRuntime() throws UnsupportedEncodingException {
+        when( mockServletContext().getInitParameter( WorkerManager.SCRIPT_KEY ) ).thenReturn( "nil" );
+        
+        subject.setExported(true);
+        subject.startup();
+
+        RubyWorker worker = subject.workers.keySet().iterator().next();
+        IRubyObject workerManagerProxy = worker.runtime.evalScriptlet("$worker_manager");
+        assertNotNull("$worker_manager not exported", workerManagerProxy);
+        Object workerManager = JavaEmbedUtils.rubyToJava(workerManagerProxy);
+        assertEquals(subject, workerManager);
+    }
+    
     /**
      * =============================== Helpers ===============================
      */

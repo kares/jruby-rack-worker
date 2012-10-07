@@ -30,6 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
+import org.jruby.javasupport.JavaEmbedUtils;
 
 /**
  * Manages JRuby worker threads.
@@ -86,6 +87,17 @@ public abstract class WorkerManager {
      */
     public static final String THREAD_PRIORITY_KEY = "jruby.worker.thread.priority";
     
+    /**
+     * By default a WorkerManager instance is exported with it's Ruby runtime.
+     * This is very useful to resolve configuration keys per runtime the same
+     * way the manager does (using {@link #getParameter(java.lang.String)}).
+     * check-out <code>jruby/rack/worker/env.rb</code>
+     */
+    protected static final String EXPORTED_NAME = "worker_manager";
+    private static final String GLOBAL_VAR_NAME = '$' + EXPORTED_NAME;
+    
+    private boolean exported = true;
+    
     protected final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(4);
     
     /**
@@ -106,6 +118,9 @@ public abstract class WorkerManager {
         final ThreadFactory threadFactory = newThreadFactory();
         for ( int i = 0; i < workersCount; i++ ) {
             final Ruby runtime = getRuntime();
+            if ( isExported() ) {
+                runtime.getGlobalVariables().set(GLOBAL_VAR_NAME, JavaEmbedUtils.javaToRuby(runtime, this));
+            }
             try {
                 final RubyWorker worker = newRubyWorker(runtime, workerScript[0], workerScript[1]);
                 final Thread workerThread = threadFactory.newThread(worker);
@@ -127,6 +142,9 @@ public abstract class WorkerManager {
         final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(this.workers);
         this.workers.clear();
         for ( final RubyWorker worker : workers.keySet() ) {
+            if ( isExported() ) {
+                worker.runtime.getGlobalVariables().clear(GLOBAL_VAR_NAME);
+            }
             final Thread workerThread = workers.get(worker);
             try {
                 worker.stop();
@@ -300,6 +318,22 @@ public abstract class WorkerManager {
 
         };
     }
+
+    /**
+     * @return whether to export this manager instance to the Ruby runtime
+     */
+    public boolean isExported() {
+        return exported;
+    }
+
+    /**
+     * Only applies if called before {@link #startup()}.
+     * @see #isExported()
+     * @param exported
+     */
+    public void setExported(final boolean exported) {
+        this.exported = exported;
+    }
     
     // ----------------------------------------
     // overridables
@@ -313,7 +347,7 @@ public abstract class WorkerManager {
         return new WorkerThreadFactory( getThreadPrefix(), getThreadPriority() );
     }
     
-    protected String getParameter(final String key) {
+    public String getParameter(final String key) {
         return System.getProperty(key);
     }
 
