@@ -11,7 +11,7 @@ module Resque
       require 'java'
       JRUBY = true
     rescue LoadError
-      warn "loading Resque::JRubyWorker on non-jruby"
+      warn "loading #{self.name} on non-jruby"
       JRUBY = false
     end
     
@@ -93,10 +93,7 @@ module Resque
     
     # @see Resque::Worker#startup
     def startup
-      # we do not register_signal_handlers
-      prune_dead_workers
-      run_hook :before_first_fork
-      register_worker
+      super
       update_native_thread_name
     end
 
@@ -111,6 +108,34 @@ module Resque
     def pause_processing
       log "pausing job processing"
       @paused = true
+    end
+    
+    # Registers the various signal handlers a worker responds to.
+    # @see Resque::Worker#register_signal_handlers
+    def register_signal_handlers
+      at_exit { shutdown }
+      log! "registered at_exit shutdown hook (instead of signal handlers)"
+    end
+
+    # @see Resque::Worker#unregister_signal_handlers
+    def unregister_signal_handlers
+      # NOTE: makes no sense since we're not child forking :
+      log! "unregister_signal_handlers does nothing"
+      nil
+    end
+    
+    # Called from #shutdown!
+    # @see Resque::Worker#kill_child
+    def kill_child
+      log! "kill_child has no effect with #{self.class.name}"
+      nil
+    end
+
+    # Called from #shutdown!
+    # @see Resque::Worker#new_kill_child
+    def new_kill_child
+      log! "new_kill_child has no effect with #{self.class.name}"
+      nil
     end
     
     # @see Resque::Worker#inspect

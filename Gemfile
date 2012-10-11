@@ -1,10 +1,13 @@
-source "http://rubygems.org"
+source "https://rubygems.org"
 
 gem 'jruby-rack'
 
-gem 'rake', :group => :test
-gem 'test-unit', :group => :test
-gem 'mocha', :group => :test
+group :test do
+  gem 'rake'
+  gem 'test-unit'
+  gem 'test-unit-context'
+  gem 'mocha'
+end
 
 gem 'navvy', :group => :navvy
 

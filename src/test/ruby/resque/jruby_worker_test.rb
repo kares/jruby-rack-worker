@@ -206,70 +206,98 @@ module Resque
       worker.log 'huu!'
     end
     
+    test "registers 'signal handlers' on startup" do
+      worker = new_worker
+      worker.stubs(:prune_dead_workers)
+      worker.expects(:register_signal_handlers)
+      worker.startup
+    end
+
+    test "sets up an at_exit hook on register_signal_handlers" do
+      worker = new_worker
+      worker.expects(:at_exit).once
+      worker.register_signal_handlers
+    end
+
+    test "shuts down worker from at_exist registered hook" do
+      worker = new_worker
+      def worker.at_exit(&block)
+        @_at_exit_block = block
+      end
+      def worker.call_at_exit
+        @_at_exit_block.call
+      end
+      worker.register_signal_handlers
+      assert ! worker.shutdown?
+      worker.call_at_exit
+      assert_true worker.shutdown?
+    end
+    
     begin
       require 'redis/client'
       Redis::Client.new.connect
-      # context "REDIS" do
       
-      test "worker exists after it's started" do
-        worker = Resque::JRubyWorker.new('foo')
-        assert_false Resque::Worker.exists?(worker.id)
-        worker.startup
-        assert_true Resque::Worker.exists?(worker.id), 
-          "#{worker} does not exist in: #{Resque::Worker.all.inspect}"
-        assert_equal worker, Resque::Worker.find(worker.to_s)
-      end
-
-      test "worker find returns correct class" do
-        worker = Resque::JRubyWorker.new('bar')
-        worker.startup
-        found = Resque::Worker.find(worker.to_s)
-        assert_equal worker.class, found.class
-      end
-
-      test "worker (still) finds a plain-old worker" do
-        worker = Resque::Worker.new('huu')
-        worker.startup
-        assert found = Resque::Worker.find(worker.id)
-        assert_equal 'Resque::Worker', found.class.name
-      end
-
-      class TestJob
-
-        @@performed = nil
-        
-        def self.perform(param = true)
-          puts "#{self}#perform(#{param.inspect})"
-          raise "already performed" if @@performed
-          @@performed = param
+      context "with redis" do
+      
+        test "worker exists after it's started" do
+          worker = Resque::JRubyWorker.new('foo')
+          assert_false Resque::Worker.exists?(worker.id)
+          worker.startup
+          assert_true Resque::Worker.exists?(worker.id), 
+            "#{worker} does not exist in: #{Resque::Worker.all.inspect}"
+          assert_equal worker, Resque::Worker.find(worker.to_s)
         end
 
-        @queue = :low
-        
-      end
-      
-      test "works (integration)" do
-        worker = Resque::JRubyWorker.new('low')
-        worker.startup
-        
-        Resque.enqueue(TestJob, 42)
-        Thread.new do
-          worker.work(0.25)
+        test "worker find returns correct class" do
+          worker = Resque::JRubyWorker.new('bar')
+          worker.startup
+          found = Resque::Worker.find(worker.to_s)
+          assert_equal worker.class, found.class
         end
-        sleep(0.30)
-        assert_match /Paused|Waiting for low/, worker.procline
-        
-        assert_equal 42, TestJob.send(:class_variable_get, :'@@performed')
-        
-        workers = Resque::JRubyWorker.system_registered_workers
-        assert_include workers, worker.id
-        worker.shutdown
-        sleep(0.25)
-        workers = Resque::JRubyWorker.system_registered_workers
-        assert_not_include workers, worker.id
-      end
+
+        test "worker (still) finds a plain-old worker" do
+          worker = Resque::Worker.new('huu')
+          worker.startup
+          assert found = Resque::Worker.find(worker.id)
+          assert_equal 'Resque::Worker', found.class.name
+        end
+
+        class TestJob
+
+          @@performed = nil
+
+          def self.perform(param = true)
+            puts "#{self}#perform(#{param.inspect})"
+            raise "already performed" if @@performed
+            @@performed = param
+          end
+
+          @queue = :low
+
+        end
+
+        test "works (integration)" do
+          worker = Resque::JRubyWorker.new('low')
+          worker.startup
+
+          Resque.enqueue(TestJob, 42)
+          Thread.new do
+            worker.work(0.25)
+          end
+          sleep(0.30)
+          assert_match /Paused|Waiting for low/, worker.procline
+
+          assert_equal 42, TestJob.send(:class_variable_get, :'@@performed')
+
+          workers = Resque::JRubyWorker.system_registered_workers
+          assert_include workers, worker.id
+          worker.shutdown
+          sleep(0.25)
+          workers = Resque::JRubyWorker.system_registered_workers
+          assert_not_include workers, worker.id
+        end
       
-      # end
+      end
     rescue ( defined?(Redis::CannotConnectError) ? Redis::CannotConnectError : Errno::ECONNREFUSED ) => e
       warn "[WARNING] skipping tests that depend on redis due #{e.inspect}"
     end
