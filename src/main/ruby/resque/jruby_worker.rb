@@ -18,7 +18,6 @@ module Resque
     def initialize(*queues)
       super
       @cant_fork = true
-      @term_child = false
     end
     
     # reserve accepts an interval argument (on master)
@@ -93,7 +92,13 @@ module Resque
     
     # @see Resque::Worker#startup
     def startup
-      super
+      _term_child = @term_child
+      begin
+        @term_child = true # avoid the heroku warning with 1.23.0
+        super
+      ensure
+        @term_child = _term_child
+      end
       update_native_thread_name
     end
 
