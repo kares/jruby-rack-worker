@@ -4,7 +4,7 @@ require 'resque/jruby_worker'
 module Resque
   class JRubyWorkerTest < Test::Unit::TestCase
     
-    startup do
+    def self.startup
       JRuby::Rack::Worker.load_jar
     end
     

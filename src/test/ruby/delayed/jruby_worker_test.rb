@@ -4,10 +4,15 @@ require 'delayed/jruby_worker'
 module Delayed
   class JRubyWorkerTest < Test::Unit::TestCase
     
-    startup do
+    def self.startup
       JRuby::Rack::Worker.load_jar
     end
 
+    setup do
+      require "logger"; require 'stringio'
+      Delayed::Worker.logger = Logger.new(StringIO.new)
+    end
+    
     test "new works with a hash" do
       assert_nothing_raised do 
         Delayed::JRubyWorker.new({})
@@ -50,7 +55,7 @@ module Delayed
       worker.start
     end
 
-    test "exit worker from at_exist registered hook" do
+    test "exit worker from at_exist registered hook and clears locks" do
       worker = new_worker
       def worker.at_exit(&block)
         @_at_exit_block = block
@@ -62,7 +67,8 @@ module Delayed
       
       worker.start
       assert ! worker.stop?
-      stub_Delayed_Job
+      job_class = stub_Delayed_Job # Delayed::Job
+      job_class.expects(:clear_locks!).with(worker.name)
       worker.call_at_exit
       assert_true worker.stop?
     end
@@ -98,7 +104,86 @@ module Delayed
       assert_equal worker.name, worker.to_s
     end
     
+    test "performs the reserved job on start" do
+      worker = new_worker
+      worker.stubs(:loop).yields
+      worker.stubs(:at_exit)
+      
+      job_class = stub_Delayed_Job # Delayed::Job
+      job_counter = 0
+      job_class.expects(:reserve).at_least_once.with(worker).returns do
+        job = mock("job-#{job_counter += 1}")
+        job.expects(:perform).once
+        job
+      end
+      
+      worker.start
+    end
+    
+    begin
+      
+      context "with backend" do
+
+        def self.startup
+          require 'active_record'
+          require 'active_record/connection_adapters/jdbcsqlite3_adapter'
+          load 'delayed/active_record_schema.rb'
+          #class Delayed::Job < ActiveRecord::Base; end
+          begin
+            require 'delayed_job_active_record' # DJ 3.0+
+          rescue LoadError
+            Delayed::Worker.backend = :active_record
+          end
+        end
+        
+        setup do
+          Delayed::Worker.logger = Logger.new(STDOUT)
+          Delayed::Worker.logger.level = Logger::DEBUG
+          #ActiveRecord::Base.logger = Delayed::Worker.logger
+          #ActiveRecord::Base.class_eval do
+          #  def self.silence; yield; end # disable silence
+          #end
+        end
+        
+        class TestJob
+
+          def initialize(param)
+            @param = param
+          end
+          
+          @@performed = nil
+          
+          def perform
+            puts "#{self}#perform param = #{@param}"
+            raise "already performed" if @@performed
+            @@performed = @param
+          end
+
+        end
+
+        test "works (integration)" do
+          worker = Delayed::JRubyWorker.new({ :sleep_delay => 0.10 })
+          Delayed::Job.enqueue job = TestJob.new(:huu)
+          Thread.new { worker.start }
+          sleep(0.20)
+          assert ! worker.stop?
+          
+          assert_equal :huu, TestJob.send(:class_variable_get, :'@@performed')
+          
+          worker.stop
+          sleep(0.15)
+          assert worker.stop?
+        end
+      
+      end
+      
+    end
+    
     private
+    
+    def new_worker(options = {})
+      Delayed::JRubyWorker.new options
+    end
     
     def stub_Delayed_Job
       Delayed.const_set :Job, const = mock('Delayed::Job')
@@ -106,15 +191,10 @@ module Delayed
     end
     
     teardown do
-      if job = Delayed::Job && defined? Mocha
-        Delayed.remove_const :Job if job.is_a?(Mocha::Mock)
+      if defined?(Delayed::Job) && defined?(Mocha) &&
+          Delayed::Job.is_a?(Mocha::Mock)
+        Delayed.send(:remove_const, :Job)
       end
-    end
-    
-    private
-    
-    def new_worker(options = {})
-      Delayed::JRubyWorker.new options
     end
     
   end

@@ -4,3 +4,4 @@ build
 nbproject
 build.xml
 catalog.xml
+src/test/resources/db/delayed.db

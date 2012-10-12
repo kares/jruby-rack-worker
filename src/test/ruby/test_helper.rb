@@ -1,3 +1,8 @@
+begin
+  require 'bundler/setup'
+rescue LoadError
+  require('rubygems') && retry
+end
 require 'test/unit'
 require 'test/unit/context'
 require 'mocha'
