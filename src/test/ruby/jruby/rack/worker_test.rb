@@ -1,5 +1,4 @@
 require File.expand_path('test_helper', File.dirname(__FILE__) + '/../..')
-require 'resque/jruby_worker'
 
 module JRuby::Rack
   class WorkerTest < Test::Unit::TestCase

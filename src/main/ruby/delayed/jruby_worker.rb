@@ -1,5 +1,5 @@
 require 'java'
-require 'delayed/worker' unless defined?(Delayed::Worker)
+require 'delayed_job' unless defined?(Delayed::Worker)
 
 module Delayed
 
@@ -14,6 +14,8 @@ module Delayed
       prefix = "#{@name_prefix}host:#{Socket.gethostname} pid:#{Process.pid} " rescue "#{@name_prefix}"
       @name = "#{prefix}thread:#{java.lang.Thread.currentThread.getName}".freeze
     end
+    
+    def to_s; name; end
     
     def start
       say "starting #{self.class.name}[#{name}] ..."
@@ -40,8 +42,9 @@ module Delayed
 
 end
 
-Delayed::Worker.guess_backend unless Delayed::Worker.backend
-
+if ! Delayed::Worker.backend && ! defined? Delayed::Lifecycle
+  Delayed::Worker.guess_backend # deprecated on DJ since 3.0
+end
 Delayed::Worker.backend.before_fork if Delayed::Worker.backend
 
 Dir.chdir( Rails.root ) if defined?(Rails.root) && Dir.getwd != Rails.root
