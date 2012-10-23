@@ -1,26 +1,26 @@
+require 'jruby/rack/worker/env'
+env = JRuby::Rack::Worker::ENV
 begin
   require 'resque/jruby_worker'
-  queues = (ENV['QUEUES'] || ENV['QUEUE'] || '*').to_s.split(',')
+  queues = (env['QUEUES'] || env['QUEUE'] || '*').to_s.split(',')
   worker = Resque::JRubyWorker.new(*queues)
   
-  worker.verbose = ENV['LOGGING'] || ENV['VERBOSE']
-  worker.very_verbose = ENV['VVERBOSE']
+  worker.verbose = env['LOGGING'] || env['VERBOSE']
+  worker.very_verbose = env['VVERBOSE']
   
   if ! worker.verbose && ! worker.very_verbose
     worker.logger = Rails.logger if defined?(Rails.logger)
   end
   
   worker.log "Starting worker #{worker}"
-  
-  ENV['INTERVAL'] ? worker.work(ENV['INTERVAL']) : worker.work
+  interval = env['INTERVAL']
+  interval ? worker.work(interval) : worker.work
 rescue Resque::NoQueueError => e
-  msg = "ENV['QUEUES'] or ENV['QUEUE'] is empty, please set it, e.g. \n" + 
+  msg = "ENV['QUEUES'] or ENV['QUEUE'] is empty, please set it " +
+  "(or remove it and worker will process all '*' queues), e.g.\n" +
   "<context-param>\n" +
-  "  <param-name>jruby.worker.script</param-name>\n" +
-  "  <param-value>\n" +
-  "    ENV['QUEUES'] = 'critical,high'\n" +
-  "    load 'resque/start_worker.rb'\n" +
-  "  </param-value>\n" +
+  "  <param-name>QUEUES</param-name>\n" +
+  "  <param-value>critical,high</param-value>\n" +
   "</context-param>\n"
   Rails.logger.error(msg) if defined?(Rails.logger)
   STDERR.puts msg
