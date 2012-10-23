@@ -163,21 +163,20 @@ end
 task :'bundler:setup' do
   begin
     require 'bundler/setup'
-  rescue
+  rescue LoadError
     puts "Please install Bundler and run `bundle install` to ensure you have all dependencies"
   end
-  #require 'appraisal'
 end
 
 namespace :test do
   
   desc "run ruby tests"
-  task :ruby => 'bundler:setup' do
+  task :ruby do # => :'bundler:setup'
     Rake::Task['jar'].invoke unless File.exists?(out_jar_path)
-    test = ENV['TEST'] || File.join(Dir.getwd, "src/test/ruby/**/*_test.rb")
-    test_opts = (ENV['TESTOPTS'] || '').split(' ')
-    test_opts = test_opts.push *FileList[test].to_a
-    ruby "-Isrc/main/ruby:src/test/ruby", "-S", "testrb", *test_opts
+    test = ENV['TEST'] || File.join("src/test/ruby/**/*_test.rb")
+    #test_opts = (ENV['TESTOPTS'] || '').split(' ')
+    test_files = FileList[test].map { |path| path.sub('src/test/ruby/', '') }
+    ruby "-Isrc/main/ruby:src/test/ruby", "-e #{test_files.inspect}.each { |test| require test }"
   end
   
   desc "run java tests"

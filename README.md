@@ -1,12 +1,12 @@
-# JRuby Rack Worker
+# JRuby-Rack-Worker
 
 Thread based workers on top of [jruby-rack](http://github.com/jruby/jruby-rack).
 
-With out of the box [JRuby](http://jruby.org) "adapters" for: 
+With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for: 
 
-* [Resque](http://github.com/defunkt/resque)
-* [Delayed::Job](http://github.com/collectiveidea/delayed_job)
-* [Navvy](http://github.com/jeffkreeftmeijer/navvy) 
+* [Resque](http://github.com/defunkt/resque) (>= 1.20.0)
+* [Delayed::Job](http://github.com/collectiveidea/delayed_job) (~> 2.1, >= 3.0)
+* [Navvy](http://github.com/jeffkreeftmeijer/navvy) (not-maintained)
 
 ... but one can easily write/adapt his own worker loop.
 
@@ -14,7 +14,7 @@ With out of the box [JRuby](http://jruby.org) "adapters" for:
 ## Motivation
 
 Ruby attempts to stay pretty close to UNIX and most popular workers have been 
-modeled the spawn a background process way. [JRuby](http://jruby.org) brings 
+modeled the "spawn a background process" way. [JRuby](http://jruby.org) brings 
 Java to the table, where "Young Java Knights" are thought to use threads 
 whenever in a need to compute something parallel while serving requests.
 
@@ -23,7 +23,7 @@ proclaims - have long running jobs that consume a lot of memory they have troubl
 releasing (e.g. due C extensions) run a separate process for sure.
 But otherwise (after all C exts usually have a native Java alternative on JRuby) 
 having predictable thread-safely written workers, one should be fine with 
-running them concurrently as part of the application in a daemon thread.
+running them concurrently as part of the application in a (daemon) thread.
 
 This does have the advantage of keeping the deployment simple and saving some
 precious memory (most notably with `threadsafe!` mode) that would have been 
