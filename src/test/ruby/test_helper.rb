@@ -1,8 +1,11 @@
 begin
   require 'bundler/setup'
-rescue LoadError
+rescue LoadError => e
   require('rubygems') && retry
+  raise e
 end
+
+gem 'test-unit' # uninitialized constant Test::Unit::TestResult::TestResultFailureSupport
 require 'test/unit'
 require 'test/unit/context'
 require 'mocha'
