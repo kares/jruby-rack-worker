@@ -125,7 +125,6 @@ task :gem => [ :jar ] do
     gem_spec = Gem::Specification.new do |spec|
       spec.name = PROJECT_NAME
       spec.version = project_version
-      spec.platform = 'jruby'
       spec.authors = ["Karol Bucek"]
       spec.email = ["self@kares.org"]
       spec.homepage = 'http://github.com/kares/jruby-rack-worker'
