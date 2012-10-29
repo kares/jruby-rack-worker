@@ -1,3 +1,4 @@
+require 'jruby/rack/worker/logger'
 require 'jruby/rack/worker/env'
 env = JRuby::Rack::Worker::ENV
 begin
@@ -22,14 +23,8 @@ rescue Resque::NoQueueError => e
   "  <param-name>QUEUES</param-name>\n" +
   "  <param-value>critical,high</param-value>\n" +
   "</context-param>\n"
-  Rails.logger.error(msg) if defined?(Rails.logger)
-  STDERR.puts msg
+  logger = JRuby::Rack::Worker.logger
+  logger && logger.error(msg)
 rescue => e
-  if defined?(Rails.logger)
-    Rails.logger.fatal(e)
-  else
-    STDERR.puts "Error starting JRubyWorker: #{e.message}"
-    STDERR.puts "Backtrace:\n\t#{e.backtrace.join("\n\t")}"
-  end
-  raise e
+  JRuby::Rack::Worker.log_error(e) || raise
 end

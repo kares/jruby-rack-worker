@@ -1,3 +1,4 @@
+require 'jruby/rack/worker/logger'
 require 'jruby/rack/worker/env'
 env = JRuby::Rack::Worker::ENV
 begin
@@ -16,11 +17,5 @@ begin
   worker = Delayed::JRubyWorker.new(options)
   worker.start
 rescue => e
-  if defined?(Rails.logger)
-    Rails.logger.fatal(e)
-  else
-    STDERR.puts "Error starting JRubyWorker: #{e.message}"
-    STDERR.puts "Backtrace:\n\t#{e.backtrace.join("\n\t")}"
-  end
-  raise e
+  JRuby::Rack::Worker.log_error(e) || raise
 end
