@@ -178,6 +178,24 @@ module Resque
       assert_not_include workers, worker.id
     end
     
+    test "unregisters worker raises when exception given" do
+      worker = new_worker
+      worker.stubs(:redis).returns redis = mock('redis')
+      redis.stubs(:srem).with :workers, worker
+      redis.stubs(:get); redis.stubs(:del)
+      
+      exception = RuntimeError.new('unregister test')
+      if Resque::JRubyWorker::UNREGISTER_WORKER_ARG
+        assert_nothing_raised(RuntimeError) do
+          worker.unregister_worker(exception)
+        end
+      else
+        assert_raise(RuntimeError) do
+          worker.unregister_worker(exception)
+        end
+      end
+    end
+    
     test "split worker id" do
       assert_equal [ 'host', '42', nil, '*' ], 
         Resque::JRubyWorker.split_id("host:42:*")

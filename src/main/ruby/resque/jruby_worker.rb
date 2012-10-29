@@ -71,11 +71,7 @@ module Resque
       
       unregister_worker
     rescue Exception => exception
-      if UNREGISTER_WORKER_ARG
-        unregister_worker(exception)
-      else
-        unregister_worker; raise exception
-      end
+      unregister_worker(exception)
     end
     
     # No forking with JRuby !
@@ -237,9 +233,13 @@ module Resque
     end
     
     # @see Resque::Worker#unregister_worker
-    def unregister_worker
+    def unregister_worker(exception = nil)
       system_unregister_worker if JRUBY
-      super
+      if UNREGISTER_WORKER_ARG
+        super(exception)
+      else
+        super(); raise exception
+      end
     end
     
     # @see Resque::Worker#procline
