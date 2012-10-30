@@ -6,5 +6,5 @@ branches:
 services:
   - redis-server
 env:
-  - resque="master"
+  - resque="master" JRUBY_OPTS="--1.9"
   - resque="~> 1.23"
