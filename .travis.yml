@@ -3,3 +3,8 @@ rvm:
 branches:
   only:
     - master
+services:
+  - redis-server
+env:
+  - resque="master"
+  - resque="~> 1.23"
