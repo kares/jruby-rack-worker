@@ -37,16 +37,17 @@ restart with the lifecycle of the deployed application and application server.
 
 ## Setup
 
-Copy the `jruby-rack-worker.jar` into the `lib` folder or the directory being
-mapped to `WEB-INF/lib` e.g. `lib/java`.
+Copy the *jruby-rack-worker.jar* into the *lib* folder or the directory being
+mapped to *WEB-INF/lib* (e.g. *lib/java*).
 
-Configure the worker in `web.xml`, you'll need to add a servlet context listener
-that will start threads when your application boots and a script to be executed
-(should be an "endless" loop-ing script). Sample configuration :
+Configure your worker in **web.xml**, you will need to add a context listener
+that will start (daemon) threads when your application boots and a script to be
+executed (should be an "endless" loop-ing script). Sample configuration :
 
     <context-param>
       <param-name>jruby.worker.script</param-name>
-      <param-value>
+      <param-value> 
+        <!-- any script with an end-less loop : ->
         require 'delayed/jruby_worker'
         Delayed::JRubyWorker.new.start
       </param-value>
@@ -58,7 +59,28 @@ that will start threads when your application boots and a script to be executed
 
 The `WorkerContextListener` needs to be executed (and thus configured) after the 
 `RailsServletContextListener`/`RackServletContextListener` as it expects the 
-*jruby-rack* environment to be available.
+JRuby-Rack environment to be booter and available.
+
+For built-in worker support (if you're happy with the defaults) simply specify
+the **jruby.worker** context parameter (optionally with custom params supported
+by the worker) e.g. :
+
+    <context-param>
+      <param-name>jruby.worker</param-name>
+      <param-value>resque</param-value>
+    </context-param>
+    <context-param>
+      <param-name>QUEUES</param-name>
+      <param-value>mails,posts</param-value>
+    </context-param>
+    <context-param>
+      <param-name>INTERVAL</param-name>
+      <param-value>2.5</param-value>
+    </context-param>
+
+    <listener>
+      <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
+    </listener>
 
 Sample deployment descriptor including optional parameters:
 [web.xml](/kares/jruby-rack-worker/blob/master/src/test/resources/sample.web.xml).
@@ -75,51 +97,52 @@ Otherwise copy the jar into your *warble.rb* configured `config.java_libs`.
 
 Warbler checks for a *config/web.xml.erb* thus configure the worker there, e.g. :
 
-    <!DOCTYPE web-app PUBLIC
-      "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
-      "http://java.sun.com/dtd/web-app_2_3.dtd">
-    <web-app>
-    <% webxml.context_params.each do |k,v| %>
-      <context-param>
-        <param-name><%= k %></param-name>
-        <param-value><%= v %></param-value>
-      </context-param>
-    <% end %>
+```
+<!DOCTYPE web-app PUBLIC
+  "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+  "http://java.sun.com/dtd/web-app_2_3.dtd">
+<web-app>
+<% webxml.context_params.each do |k,v| %>
+  <context-param>
+    <param-name><%= k %></param-name>
+    <param-value><%= v %></param-value>
+  </context-param>
+<% end %>
 
-      <filter>
-        <filter-name>RackFilter</filter-name>
-        <filter-class>org.jruby.rack.RackFilter</filter-class>
-      </filter>
-      <filter-mapping>
-        <filter-name>RackFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-      </filter-mapping>
+  <filter>
+    <filter-name>RackFilter</filter-name>
+    <filter-class>org.jruby.rack.RackFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>RackFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
 
-      <listener>
-        <listener-class><%= webxml.servlet_context_listener %></listener-class>
-      </listener>
+  <listener>
+    <listener-class><%= webxml.servlet_context_listener %></listener-class>
+  </listener>
 
-    <% if webxml.jndi then [webxml.jndi].flatten.each do |jndi| %>
-      <resource-ref>
-        <res-ref-name><%= jndi %></res-ref-name>
-        <res-type>javax.sql.DataSource</res-type>
-        <res-auth>Container</res-auth>
-      </resource-ref>
-    <% end; end %>
+<% if webxml.jndi then [webxml.jndi].flatten.each do |jndi| %>
+  <resource-ref>
+    <res-ref-name><%= jndi %></res-ref-name>
+    <res-type>javax.sql.DataSource</res-type>
+    <res-auth>Container</res-auth>
+  </resource-ref>
+<% end; end %>
 
-      <!-- jruby-rack-worker setup using the built-in libraries support : -->
+  <!-- jruby-rack-worker setup using the built-in libraries support : -->
 
-      <context-param>
-        <param-name>jruby.worker</param-name>
-        <param-value>delayed_job</param-value> <!-- or resque or navvy -->
-      </context-param>
+  <context-param>
+    <param-name>jruby.worker</param-name>
+    <param-value>delayed_job</param-value> <!-- or resque or navvy -->
+  </context-param>
 
-      <listener>
-        <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
-      </listener>
+  <listener>
+    <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
+  </listener>
 
-    </web-app>
-
+</web-app>
+```
 
 If you're deploying a Rails application on JRuby it's highly **recommended** to 
 uncomment `config.threadsafe!`. Otherwise, if unsure or you're code is not 
@@ -131,31 +154,57 @@ from the pool (consider it while setting
 
 ### Custom Workers
 
-Worker Migration
-================
-
-There are a few gotchas to keep in mind when migrating a worker such as
-[Delayed::Job](http://github.com/collectiveidea/delayed_job) to JRuby, You'll
-most probably need to start by looking at the current worker spawning script
-(such as `script/delayed_job`) :
+There are a few gotchas to keep in mind when creating a custom worker, if you've
+got a worker spawning script (e.g. a rake task) start there to write the worker
+"starter" script. Some tips to keep in mind :
 
  * avoid native gems such as daemons (in DJ's case this means avoiding the whole
    `Delayed::Command` implementation)
 
  * remove command line processing - all your configuration should happen in an
-   application initializer or the `web.xml`
+   application initializer (or be configurable from *web.xml*)
 
  * make sure the worker code is thread-safe in case your application is running
    in `threadsafe!` mode (make sure no global state is changing by the worker or
    class variables are not being used to store worker state)
 
  * refactor your worker's exit code from a (process oriented) signal based `trap`
-   to `at_exit` - which respects better the JRuby environment your workers are
-   going to run in
+   to an `at_exit` hook - which respects the JRuby environment your workers are 
+   going to be running in
 
+Keep in mind that if you do configure to use multiple threads the script will be
+loaded and executed for each thread, thus move your worker class definition into
+a separate file that you'll require from the script.
 
 See the [Delayed::Job](/kares/jruby-rack-worker/tree/master/src/main/ruby/delayed)
-JRuby "adapted" worker code for inspiration.
+JRuby "adapted" worker code for an inspiration.
+
+If you'd like to specify custom parameters you can do so in the deployment 
+descriptor as context init parameters or as java system properties, use the 
+following code to obtain them :
+
+```ruby
+require 'jruby/rack/worker/env'
+env = JRuby::Rack::Worker::ENV
+
+worker = MyWorker.new
+worker.queues = (env['QUEUES'] || 'all').split(',').map(&:strip)
+worker.loop
+```
+
+If you need a logger JRuby-Rack-Worker sets up one which will be Rails.logger for
+in Rails or a `STDOUT` logger otherwise by default :
+
+```ruby
+require 'jruby/rack/worker/logger'
+begin
+  worker = MyWorker.new
+  worker.logger = JRuby::Rack::Worker.logger
+  worker.start
+rescue => e
+  JRuby::Rack::Worker.log_error(e)
+end
+```
 
 
 ## Build
@@ -165,7 +214,7 @@ JRuby "adapted" worker code for inspiration.
 The build is performed by [rake](http://rake.rubyforge.org) which should be part
 of your JRuby installation, if you're experiencing conflicts with another Ruby and
 it's `rake` executable use `jruby -S rake` instead.
-Besides you'll to need [ant](http://ant.apache.org/) installed for the Java part.
+Besides you will need [ant](http://ant.apache.org/) installed for the Java part.
 
 Build the *jruby-rack-worker_[VERSION].jar* using :
 
