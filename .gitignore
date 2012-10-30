@@ -4,4 +4,5 @@ build
 nbproject
 build.xml
 catalog.xml
+Gemfile.lock
 src/test/resources/db/delayed.db
