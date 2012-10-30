@@ -213,9 +213,9 @@ end
 desc "run all tests"
 task :test => [ 'test:java', 'test:ruby' ]
 
+task :default => :test
+
 desc "clean up"
 task :clean do
   rm_rf OUT_DIR
 end
-
-task :default => [ :jar ]
