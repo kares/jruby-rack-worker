@@ -34,7 +34,7 @@ ant.property :name => "ivy.lib.dir", :value => LIB_BASE_DIR
 
 namespace :ivy do
 
-  ivy_version = '2.1.0'
+  ivy_version = '2.2.0'
   ivy_jar_dir = File.join(LIB_BASE_DIR, 'build')
   ivy_jar_file = File.join(ivy_jar_dir, 'ivy.jar')
 
@@ -52,6 +52,10 @@ namespace :ivy do
       fileset :dir => ivy_jar_dir, :includes => '*.jar'
     end
     ant.taskdef :resource => "org/apache/ivy/ant/antlib.xml", :classpathref => "ivy.lib.path"
+  end
+
+  task :clean do
+    rm_rf LIB_BASE_DIR
   end
   
 end
