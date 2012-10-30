@@ -10,6 +10,7 @@ With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for:
 
 ... but one can easily write/adapt his own worker loop.
 
+[![Build Status][0]](http://travis-ci.org/kares/jruby-rack-worker)
 
 ## Motivation
 
@@ -229,3 +230,5 @@ Build the gem (includes the .jar packaged) :
 
 Copyright (c) 2012 [Karol Bucek](https://github.com/kares). 
 See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.
+
+[0]: https://secure.travis-ci.org/kares/jruby-rack-worker.png
