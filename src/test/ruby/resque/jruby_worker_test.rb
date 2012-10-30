@@ -210,18 +210,21 @@ module Resque
     
     test "uses logger.info when logging verbose" do
       worker = new_worker
-      worker.verbose = true
-      worker.logger = logger = mock('logger')
-      logger.expects(:info).once.with { |msg| msg =~ /huu!/ }
+      worker.verbose = true if worker.respond_to?(:verbose)
+      worker.logger.expects(:info).once.with { |msg| msg =~ /huu!/ }
       worker.log 'huu!'
     end
 
     test "uses logger.debug when logging very-verbose" do
       worker = new_worker
-      worker.very_verbose = true
-      worker.logger = logger = mock('logger')
-      logger.expects(:debug).once.with { |msg| msg =~ /huu!/ }
-      worker.log 'huu!'
+      worker.very_verbose = true if worker.respond_to?(:very_verbose)
+      worker.logger.expects(:debug).once.with { |msg| msg =~ /huu!/ }
+      worker.log! 'huu!'
+    end
+
+    test "returns a logger instance" do
+      worker = new_worker
+      assert_instance_of Logger, worker.logger
     end
     
     test "registers 'signal handlers' on startup" do
@@ -296,6 +299,7 @@ module Resque
 
         test "works (integration)" do
           worker = Resque::JRubyWorker.new('low')
+          worker.verbose = true if worker.respond_to?(:verbose)
           worker.startup
 
           Resque.enqueue(TestJob, 42)

@@ -252,25 +252,61 @@ module Resque
       end
     end
     
-    # Log a message to STDOUT if we are verbose or very_verbose.
-    # @see Resque::Worker#log
-    def log(message)
-      if very_verbose
-        time = Time.now.strftime('%H:%M:%S %Y-%m-%d')
-        name = java.lang.Thread.currentThread.getName
-        logger.debug "** [#{time}] #{name}: #{message}"
-      elsif verbose
-        logger.info "*** #{message}"
+    if ( instance_method(:log) rescue nil ) && ! defined? Resque.logger
+      
+      # Log a message to STDOUT if we are verbose or very_verbose.
+      # @see Resque::Worker#log
+      def log(message)
+        if very_verbose
+          time = Time.now.strftime('%H:%M:%S %Y-%m-%d')
+          name = java.lang.Thread.currentThread.getName
+          logger.debug "** [#{time}] #{name}: #{message}"
+        elsif verbose
+          logger.info "*** #{message}"
+        end
       end
+      
+      def verbose=(value)
+        if value && ! very_verbose
+          logger.level = Logger::INFO
+        elsif ! value
+          logger.level = Logger::WARN
+        end
+        @verbose = value
+      end
+
+      def very_verbose=(value)
+        if value
+          logger.level = Logger::DEBUG
+        elsif ! value && verbose
+          logger.level = Logger::INFO
+        else
+          logger.level = Logger::WARN
+        end
+        @very_verbose = value
+      end
+      
+    else # #verbose, #very_verbose, #log, #log! removed on 2.0 [master]
+      
+      def log(message); logger.info(message); end
+      def log!(message); logger.debug(message); end
+      
     end
     
     def logger
-      # resque compatibility - stdout by default
       @logger ||= begin 
-        logger = Logger.new(STDOUT)
-        logger.level = Logger::WARN
-        logger.level = Logger::INFO if verbose
-        logger.level = Logger::DEBUG if very_verbose
+        # [master] `Resque.logger = Logger.new(STDOUT)`
+        logger = Resque.logger if defined? Resque.logger
+        unless logger
+          logger = Logger.new(STDOUT)
+          if respond_to?(:very_verbose)
+            logger.level = Logger::WARN
+            logger.level = Logger::INFO if verbose
+            logger.level = Logger::DEBUG if very_verbose
+          else
+            logger.level = Logger::INFO
+          end
+        end
         logger
       end
     end
