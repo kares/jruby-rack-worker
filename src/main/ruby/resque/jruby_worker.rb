@@ -25,11 +25,6 @@ module Resque
     # unregister_worker(exception = nil) changed since version 1.20.0
     UNREGISTER_WORKER_ARG = instance_method(:unregister_worker).arity != 0 # :nodoc
     
-    if RESERVE_ARG && RUBY_VERSION < '1.9'
-      warn "[WARNING] resque-#{Resque::Version} will most likely " + 
-      "not work correctly with ruby #{RUBY_VERSION} (try --1.9) !"
-    end
-    
     # @see Resque::Worker#work
     def work(interval = 5.0, &block)
       interval = Float(interval)

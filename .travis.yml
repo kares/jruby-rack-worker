@@ -1,10 +1,14 @@
+language: ruby
 rvm:
-  - jruby
+  - jruby-18mode
+  - jruby-19mode
+  #- jruby-head
 branches:
   only:
     - master
 services:
   - redis-server
 env:
-  - resque="master" JRUBY_OPTS="--1.9"
+  - resque="master"
+  #- resque="master" JRUBY_OPTS="--1.9"
   - resque="~> 1.23"
