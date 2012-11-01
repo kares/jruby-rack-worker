@@ -13,14 +13,17 @@ group :delayed_job do
   if ENV['delayed_job']
     if ENV['delayed_job'] == 'master'
       gem 'delayed_job', :git => 'git://github.com/collectiveidea/delayed_job.git'
+      gem 'delayed_job_active_record', :require => nil # for tests
     else
-      gem 'delayed_job', ENV['delayed_job']
+      gem 'delayed_job', version = ENV['delayed_job']
+      if version =~ /3\.\d/ # NOTE: does not handle '>= 2.1'
+        gem 'delayed_job_active_record', :require => nil # for tests
+      end
     end
   else
     gem 'delayed_job'
+    gem 'delayed_job_active_record', :require => nil # for tests
   end
-  # TODO this stands in our way of testing with 2.x :
-  gem 'delayed_job_active_record', :require => nil # for tests
   gem 'activerecord', :require => nil # for tests
   gem 'activerecord-jdbcsqlite3-adapter', :require => nil # for tests
 end
