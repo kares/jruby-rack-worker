@@ -1,6 +1,9 @@
 require File.expand_path('test_helper', File.dirname(__FILE__) + '/..')
 require 'resque/jruby_worker'
 
+gem_spec = Gem.loaded_specs['resque']
+puts "loaded gem 'resque' '#{gem_spec.version.to_s}'" if gem_spec
+
 module Resque
   class JRubyWorkerTest < Test::Unit::TestCase
     

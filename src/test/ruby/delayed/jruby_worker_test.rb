@@ -1,6 +1,9 @@
 require File.expand_path('test_helper', File.dirname(__FILE__) + '/..')
 require 'delayed/jruby_worker'
 
+gem_spec = Gem.loaded_specs['delayed_job']
+puts "loaded gem 'delayed_job' '#{gem_spec.version.to_s}'" if gem_spec
+
 module Delayed
   class JRubyWorkerTest < Test::Unit::TestCase
     
