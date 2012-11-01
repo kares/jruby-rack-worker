@@ -9,6 +9,6 @@ branches:
 services:
   - redis-server
 env:
-  - resque="master"
+  - resque="master" delayed_job="~>3.0"
   #- resque="master" JRUBY_OPTS="--1.9"
-  - resque="~> 1.23"
+  - resque="~>1.23" delayed_job="~>2.1"
