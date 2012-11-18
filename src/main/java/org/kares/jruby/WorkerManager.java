@@ -117,7 +117,15 @@ public abstract class WorkerManager {
         
         final ThreadFactory threadFactory = newThreadFactory();
         for ( int i = 0; i < workersCount; i++ ) {
-            final Ruby runtime = getRuntime();
+            final Ruby runtime;
+            try {
+                runtime = getRuntime(); // handles DefaultErrorApplication.getRuntime
+            }
+            catch (UnsupportedOperationException e) { // error happened during JRuby-Rack startup
+                log("[" + getClass().getName() + "] failed to obtain (Ruby) runtime");
+                break;
+            }
+            
             if ( isExported() ) {
                 runtime.getGlobalVariables().set(GLOBAL_VAR_NAME, JavaEmbedUtils.javaToRuby(runtime, this));
             }

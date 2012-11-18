@@ -34,7 +34,7 @@ public class DefaultWorkerManager extends ServletWorkerManager {
     }
 
     @Override
-    public Ruby getRuntime() {
+    public Ruby getRuntime() throws IllegalStateException, UnsupportedOperationException {
         final ServletContext context = getServletContext();
         // obtain JRuby runtime from JRuby-Rack :
         final RackApplicationFactory appFactory = (RackApplicationFactory)
@@ -49,6 +49,12 @@ public class DefaultWorkerManager extends ServletWorkerManager {
         }
         
         final RackApplication app = appFactory.getApplication();
+        if ( app == null ) {
+            throw new IllegalStateException("factory returned null app");
+        }
+        if ( app.getClass().getName().indexOf("ErrorApplication") != -1 ) {
+            throw new UnsupportedOperationException("won't use error application runtime");
+        }
         return app.getRuntime();
     }
     

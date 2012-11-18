@@ -27,6 +27,7 @@ import org.jruby.Ruby;
 
 import org.jruby.rack.RackApplication;
 import org.jruby.rack.RackApplicationFactory;
+import org.jruby.rack.RackContext;
 
 import org.kares.jruby.RubyWorker;
 import org.kares.jruby.WorkerManager;
@@ -50,8 +51,6 @@ public class DefaultWorkerManagerTest {
         DefaultWorkerManagerImpl(final ServletContext context) {
             super(context);
         }
-        
-        //final Collection<Ruby> runtimes = new ArrayList<Ruby>();
 
         ThreadFactory threadFactory;
         
