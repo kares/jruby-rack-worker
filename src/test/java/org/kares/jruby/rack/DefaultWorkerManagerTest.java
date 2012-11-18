@@ -16,7 +16,9 @@
 package org.kares.jruby.rack;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.concurrent.ThreadFactory;
@@ -86,8 +88,18 @@ public class DefaultWorkerManagerTest {
         finally {
             verify( mockServletContext() ).log( 
                     contains("org.jruby.rack.RackApplicationFactory not yet initialized") 
-            ); 
+            );
         }
+    }
+    
+    @Test
+    public void logsWhenRackApplicationFactoryThrowsRackException() {
+        MockRackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
+        applicationFactory.setThrowInitializationException("initialization failed");
+        when( mockServletContext().getAttribute("rack.factory") ).thenReturn( applicationFactory );
+        when( mockServletContext().getInitParameter( "jruby.worker.script" ) ).thenReturn( "nil" );
+
+        subject.startup();
     }
     
     @Test
@@ -126,7 +138,21 @@ public class DefaultWorkerManagerTest {
 
         assertSame(runtime, subject.getRuntime());
     }
-    
+
+    @Test
+    public void logsWithRackContext() {
+        MockRackApplicationFactory applicationFactory = newMockRackApplicationFactory( null );
+        when( mockServletContext().getAttribute("rack.factory") ).thenReturn( applicationFactory );
+        ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
+        MockRackContext rackContext = newMockRackContext( logOutput );
+        when( mockServletContext().getAttribute("rack.context") ).thenReturn( rackContext );
+        when( mockServletContext().getInitParameter( "jruby.worker.script" ) ).thenReturn( "nil" );
+
+        subject.startup();
+        
+        final String log = logOutput.toString();
+        assertTrue( log, log.contains("started 1 worker(s)") );
+    }
 
     @Test // an "integration" test
     public void spawnsRubyExecutionInAThread() throws InterruptedException {
@@ -177,15 +203,23 @@ public class DefaultWorkerManagerTest {
         return servletContext;
     }
     
-    RackApplication newMockRackApplication(Ruby runtime) {
+    MockRackApplication newMockRackApplication(Ruby runtime) {
         return new MockRackApplication(runtime);
     }
 
-    RackApplicationFactory newMockRackApplicationFactory(RackApplication application) {
+    MockRackApplicationFactory newMockRackApplicationFactory(RackApplication application) {
         if (application == null) {
             application = newMockRackApplication(null);
         }
         return new MockRackApplicationFactory(application);
+    }
+    
+    MockRackContext newMockRackContext(final OutputStream logStream) {
+        MockRackContext rackContext = new MockRackContext();
+        if (logStream != null) {
+            rackContext.setLog(logStream);
+        }
+        return rackContext;
     }
     
 }

@@ -33,6 +33,9 @@ class MockRackApplicationFactory implements RackApplicationFactory {
     }
 
     public RackApplication getApplication() throws RackInitializationException {
+        if ( isThrowInitializationException() ) {
+            throw new RackInitializationException(initializationExceptionMessage);
+        }
         return application;
     }
 
@@ -56,4 +59,16 @@ class MockRackApplicationFactory implements RackApplicationFactory {
         throw new UnsupportedOperationException("finishedWithApplication(RackApplication)");
     }
 
+    private boolean throwInitializationException;
+    private String initializationExceptionMessage;
+
+    boolean isThrowInitializationException() {
+        return throwInitializationException;
+    }
+    
+    void setThrowInitializationException(String message) {
+        throwInitializationException = true;
+        initializationExceptionMessage = message;
+    }
+    
 }

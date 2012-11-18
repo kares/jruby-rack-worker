@@ -20,6 +20,9 @@ import javax.servlet.ServletContext;
 import org.jruby.Ruby;
 import org.jruby.rack.RackApplication;
 import org.jruby.rack.RackApplicationFactory;
+import org.jruby.rack.RackContext;
+import org.jruby.rack.RackException;
+import org.jruby.rack.RackLogger;
 import org.kares.jruby.ServletWorkerManager;
 
 /**
@@ -35,10 +38,8 @@ public class DefaultWorkerManager extends ServletWorkerManager {
 
     @Override
     public Ruby getRuntime() throws IllegalStateException, UnsupportedOperationException {
-        final ServletContext context = getServletContext();
         // obtain JRuby runtime from JRuby-Rack :
-        final RackApplicationFactory appFactory = (RackApplicationFactory)
-                context.getAttribute( RackApplicationFactory.FACTORY );
+        final RackApplicationFactory appFactory = getRackFactory();
         if ( appFactory == null ) {
             final String message = 
                     RackApplicationFactory.class.getName() + " not yet initialized - " +
@@ -47,8 +48,13 @@ public class DefaultWorkerManager extends ServletWorkerManager {
             log("[" + getClass().getName() + "] " + message);
             throw new IllegalStateException(message);
         }
-        
-        final RackApplication app = appFactory.getApplication();
+        final RackApplication app;
+        try {
+            app = appFactory.getApplication();
+        }
+        catch (RackException e) {
+            throw new UnsupportedOperationException(e); // rack/rails initialization failure
+        }
         if ( app == null ) {
             throw new IllegalStateException("factory returned null app");
         }
@@ -56,6 +62,55 @@ public class DefaultWorkerManager extends ServletWorkerManager {
             throw new UnsupportedOperationException("won't use error application runtime");
         }
         return app.getRuntime();
+    }
+    
+    protected RackContext getRackContext() {
+        return (RackContext) getServletContext().
+            getAttribute( RackApplicationFactory.RACK_CONTEXT );
+    }
+
+    protected RackApplicationFactory getRackFactory() {
+        return (RackApplicationFactory) getServletContext().
+            getAttribute( RackApplicationFactory.FACTORY );
+    }
+    
+    private RackLogger logger;
+
+    public RackLogger getLogger() {
+        if (logger == null) {
+            synchronized (this) {
+                if (logger == null) {
+                    logger = getRackContext();
+                }
+            }
+        }
+        return logger;
+    }
+
+    public synchronized void setLogger(RackLogger logger) {
+        this.logger = logger;
+    }
+    
+    @Override
+    protected void log(String message) {
+        final RackLogger logger = getLogger();
+        if (logger != null) {
+            logger.log(RackLogger.INFO, message);
+        }
+        else {
+            super.log(message);
+        }
+    }
+
+    @Override
+    protected void log(String message, Exception e) {
+        final RackLogger logger = getLogger();
+        if (logger != null) {
+            logger.log(RackLogger.ERROR, message, e);
+        }
+        else {
+            super.log(message, e);
+        }
     }
     
 }
