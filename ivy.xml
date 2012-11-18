@@ -9,7 +9,7 @@
     <dependencies>
         <dependency org="javax.servlet" name="servlet-api" rev="2.4" conf="runtime->*"/>
         <dependency org="org.jruby.rack" name="jruby-rack" rev="1.1.10" conf="runtime->*"/>
-        <dependency org="junit" name="junit" rev="4.8.2" conf="test->*"/>
-        <dependency org="org.mockito" name="mockito-all" rev="1.8.5" conf="test->*"/>
+        <dependency org="junit" name="junit" rev="4.11" conf="test->*"/>
+        <dependency org="org.mockito" name="mockito-all" rev="1.9.5" conf="test->*"/>
     </dependencies>
 </ivy-module>
