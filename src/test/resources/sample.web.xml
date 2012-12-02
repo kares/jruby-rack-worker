@@ -15,10 +15,6 @@
         <param-name>rails.env</param-name>
         <param-value>production</param-value>
     </context-param>
-    <context-param>
-        <param-name>public.root</param-name>
-        <param-value>/</param-value>
-    </context-param>
 
     <context-param>
         <param-name>jruby.min.runtimes</param-name>
@@ -44,12 +40,12 @@
 
     <!-- Worker setup including optional configuration parameters : -->
 
-    <!-- declaratively configure a worker : -->
+    <!-- declaratively configure a worker (with built-in support) : -->
     <context-param>
         <param-name>jruby.worker</param-name>
-        <param-value>delayed_job</param-value>
+        <param-value>resque</param-value> <!-- delayed_job -->
     </context-param>
-    <!-- or use an inline worker script : -->
+    <!-- alternatively use an (arbitrary) inline worker script : -->
     <!--
     <context-param>
         <param-name>jruby.worker.script</param-name>
@@ -58,14 +54,14 @@
             Delayed::JRubyWorker.new.start
         </param-value>
     </context-param>-->
-    <!-- if you script is located in a (.rb) file use : -->
+    <!-- if you script is to be loaded from a (.rb) file use : -->
     <!--
     <context-param>
         <param-name>jruby.worker.script.path</param-name>
         <param-value>delayed/start_worker.rb</param-value>
     </context-param>-->
-    <!-- (note that jruby.worker.script and jruby.worker.script.path params are 
-         mutually exclusive and jruby.worker.script takes precedence !) -->
+    <!-- note that jruby.worker.script and jruby.worker.script.path params are 
+         mutually exclusive and jruby.worker.script takes precedence ! -->
     <!-- if one worker thread is not enough, increase the value (defaults to 1) : -->
     <context-param>
         <param-name>jruby.worker.thread.count</param-name>
@@ -76,6 +72,16 @@
     <context-param>
         <param-name>jruby.worker.thread.priority</param-name>
         <param-value>NORM</param-value><!-- NORM == 5, MIN == 1, MAX == 10 -->
+    </context-param>
+
+    <!-- worker specific configuration parameters (in this case for resque) : -->
+    <context-param>
+        <param-name>QUEUES</param-name>
+        <param-value>mails,posts</param-value>
+    </context-param>
+    <context-param>
+        <param-name>INTERVAL</param-name>
+        <param-value>1.5</param-value>
     </context-param>
 
     <!-- mandatory - make sure it's declared after the org.jruby.rack... listener : -->
