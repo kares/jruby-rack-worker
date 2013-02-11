@@ -4,9 +4,9 @@ gem 'jruby-rack'
 
 group :test do
   gem 'rake'
-  gem 'test-unit'
+  gem 'test-unit', '2.5.3'
   gem 'test-unit-context'
-  gem 'mocha'
+  gem 'mocha', '~> 0.12.6'
 end
 
 group :delayed_job do
