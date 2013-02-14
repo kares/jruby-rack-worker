@@ -84,7 +84,21 @@ by the worker) e.g. :
     </listener>
 
 Sample deployment descriptor including optional parameters:
-[web.xml](/kares/jruby-rack-worker/blob/master/src/test/resources/sample.web.xml).
+[web.xml](src/test/resources/sample.web.xml).
+
+### Threads
+
+Number of worker threads as well as their priorities can be configured (by 
+default a single worker thread is started with the default NORM priority) :
+
+- *jruby.worker.thread.count* please be sure you do not start too many threads,
+  consider tuning your worker settings if possible first e.g. for DJ/Resque the
+  sleep interval if you feel like the worker is not performing enough work.
+- *jruby.worker.thread.priority* maps to standard (Java) thread priority which 
+  is a value <MIN, MAX> where MIN == 1 and MAX == 10 (the NORM priority is 5),
+  this is useful e.g. if you're load gets high (lot of request serving threads) 
+  and you do care about requests more than about executing worker code you might
+  consider decreasing the priority (by 1).
 
 ### Warbler
 
@@ -151,7 +165,6 @@ thread-safe yet you'll end up polling several JRuby runtimes in a single process
 in this case however each worker thread will use (block) an application runtime 
 from the pool (consider it while setting 
 `jruby.min.runtimes` and `jruby.max.runtimes` parameters).
-
 
 ### Custom Workers
 
@@ -228,7 +241,7 @@ Build the gem (includes the .jar packaged) :
 
 ## Copyright
 
-Copyright (c) 2012 [Karol Bucek](https://github.com/kares). 
+Copyright (c) 2013 [Karol Bucek](https://github.com/kares). 
 See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.
 
 [0]: https://secure.travis-ci.org/kares/jruby-rack-worker.png
