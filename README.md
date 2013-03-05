@@ -16,8 +16,8 @@ With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for:
 
 Ruby attempts to stay pretty close to UNIX and most popular workers have been 
 modeled the "spawn a background process" way. [JRuby](http://jruby.org) brings 
-Java to the table, where "Young Java Knights" are thought to use threads 
-whenever in a need to compute something parallel while serving requests.
+Java to the table, where "Young Java Knights" are taught to use threads 
+whenever in a need to compute something in parallel with serving requests.
 
 There's no right or wrong way of doing this. If you do expect chaos like Resque
 proclaims - have long running jobs that consume a lot of memory they have trouble 
