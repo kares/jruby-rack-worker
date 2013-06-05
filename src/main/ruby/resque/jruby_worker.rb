@@ -6,6 +6,8 @@ module Resque
   # to be used in a process per worker env to behave safely in concurrent env.
   class JRubyWorker < Worker
 
+    RESQUE_2x = Resque.const_defined?(:WorkerRegistry)
+
     begin
       require 'jruby'
       require 'java'
@@ -22,8 +24,6 @@ module Resque
 
     # reserve accepts an interval argument (on master)
     RESERVE_ACCEPTS_INTERVAL = instance_method(:reserve).arity != 0 # :nodoc
-    # unregister_worker(exception = nil) changed since version 1.20.0
-    UNREGISTER_WORKER_ARG = instance_method(:unregister_worker).arity != 0 # :nodoc
 
     # @see Resque::Worker#work
     def work(interval = 5.0, &block)
@@ -39,7 +39,6 @@ module Resque
           pause while paused? # keep sleeping while paused
         end
 
-        #noinspection RubyArgCount
         if (job = (RESERVE_ACCEPTS_INTERVAL ? reserve(interval) : reserve))
           log "got: #{job.inspect}"
 
@@ -56,15 +55,15 @@ module Resque
           break if interval.zero?
           if RESERVE_ACCEPTS_INTERVAL
             log! "Timed out after #{interval} seconds"
-            procline paused? ? "Paused" : "Waiting for #{@queues.join(',')}"
+            procline paused? ? "Paused" : "Waiting for #{queue_names}"
           else
             log! "Sleeping for #{interval} seconds"
-            procline paused? ? "Paused" : "Waiting for #{@queues.join(',')}"
+            procline paused? ? "Paused" : "Waiting for #{queue_names}"
             sleep interval
           end
         end
       end
-
+      
       unregister_worker
     rescue Exception => exception
       unregister_worker(exception)
@@ -142,9 +141,16 @@ module Resque
 
     # @see Resque::Worker#to_s
     def to_s
-      @to_s ||= "#{hostname}:#{pid}[#{thread_id}]:#{@queues.join(',')}".freeze
+      @to_s ||= "#{hostname}:#{pid}[#{thread_id}]:#{queue_names}".freeze
     end
     alias_method :id, :to_s
+
+    if RESQUE_2x
+      def queue_names; @worker_queues.to_s; end
+    else
+      def queue_names; @queues.join(','); end
+    end
+    private :queue_names
 
     # @see Resque::Worker#hostname
     def hostname
@@ -172,9 +178,15 @@ module Resque
         # 2. worker might run as a process (with MRI)
         next if (pids ||= system_pids).include?(pid)
         log! "Pruning dead worker: #{worker}"
-        worker.unregister_worker
+        if worker.respond_to?(:unregister_worker)
+          worker.unregister_worker
+        else # Resque 2.x
+          WorkerRegistry.new(worker).unregister
+        end
       end
     end
+
+    def self.all; WorkerRegistry.all; end if RESQUE_2x
 
     WORKER_THREAD_ID = 'worker'.freeze
 
@@ -221,21 +233,50 @@ module Resque
       end
     end
 
-    # @see Resque::Worker#register_worker
-    def register_worker
-      outcome = super
-      system_register_worker if JRUBY
-      outcome
-    end
+    if RESQUE_2x
 
-    # @see Resque::Worker#unregister_worker
-    def unregister_worker(exception = nil)
-      system_unregister_worker if JRUBY
-      if UNREGISTER_WORKER_ARG
-        super(exception)
-      else
-        super(); raise exception
+      def register_worker
+        outcome = worker_registry.register
+        system_register_worker if JRUBY
+        outcome
       end
+
+      def unregister_worker(exception = nil)
+        system_unregister_worker if JRUBY
+        if exception
+          worker_registry.unregister(exception)
+        else
+          worker_registry.unregister
+        end
+      end # removed on 2.0 [master]
+
+    else
+
+      # @see Resque::Worker#register_worker
+      def register_worker
+        outcome = super
+        system_register_worker if JRUBY
+        outcome
+      end
+
+      if instance_method(:unregister_worker).arity != 0
+
+        # @see Resque::Worker#unregister_worker
+        def unregister_worker(exception = nil)
+          system_unregister_worker if JRUBY
+          super(exception)
+        end
+
+      else
+
+        # @see Resque::Worker#unregister_worker
+        def unregister_worker(exception = nil)
+          system_unregister_worker if JRUBY
+          super(); raise exception
+        end
+
+      end
+
     end
 
     # @see Resque::Worker#procline
@@ -418,7 +459,7 @@ module Resque
   Worker.class_eval do
     # Returns a single worker object. Accepts a string id.
     def self.find(worker_id)
-      if exists? worker_id
+      if respond_to?(:exists?) ? exists?(worker_id) : WorkerRegistry.exists?(worker_id)
         # NOTE: a pack so that Resque::Worker.find returns
         # correct JRubyWorker class for thread-ed workers:
         host, pid, thread, queues = JRubyWorker.split_id(worker_id)
