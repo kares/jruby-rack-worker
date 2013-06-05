@@ -6,8 +6,6 @@ module Resque
   # to be used in a process per worker env to behave safely in concurrent env.
   class JRubyWorker < Worker
 
-    RESQUE_2x = Resque.const_defined?(:WorkerRegistry)
-
     begin
       require 'jruby'
       require 'java'
@@ -17,63 +15,86 @@ module Resque
       JRUBY = false
     end
 
-    def initialize(*queues)
-      super
-      @cant_fork = true
-    end
+    if RESQUE_2x = Resque.const_defined?(:WorkerRegistry)
 
-    # reserve accepts an interval argument (on master)
-    RESERVE_ACCEPTS_INTERVAL = instance_method(:reserve).arity != 0 # :nodoc
+      def initialize(*args)
+        options = args.last.is_a?(Hash) ? args.pop : {}
+        super(args, options) # (queues = [], options = {})
+      end
 
-    # @see Resque::Worker#work
-    def work(interval = 5.0, &block)
-      interval = Float(interval)
-      procline "Starting" # do not change $0
-      startup
+      def work(&block)
+        startup
+        work_loop(&block)
+        unregister_worker
+      rescue Exception => exception
+        unregister_worker(exception)
+      end
 
-      loop do
-        break if shutdown?
+      def fork_for_child(job, &block)
+        perform(job, &block) # instead of @child.fork_and_perform(job, &block)
+      end
 
-        if paused?
-          procline "Paused"
-          pause while paused? # keep sleeping while paused
-        end
+    else # 1.2x.y
 
-        if (job = (RESERVE_ACCEPTS_INTERVAL ? reserve(interval) : reserve))
-          log "got: #{job.inspect}"
+      def initialize(*queues)
+        super
+        @cant_fork = true
+      end
 
-          job.worker = self
-          run_hook :before_fork, job
-          working_on job
+      # reserve accepts an interval argument (on master)
+      RESERVE_ACCEPTS_INTERVAL = instance_method(:reserve).arity != 0 # :nodoc
 
-          procline "Processing #{job.queue} since #{Time.now.to_i}"
+      # @see Resque::Worker#work
+      def work(interval = 5.0, &block)
+        interval = Float(interval)
+        procline "Starting" # do not change $0
+        startup
 
-          perform(job, &block)
+        loop do
+          break if shutdown?
 
-          done_working
-        else
-          break if interval.zero?
-          if RESERVE_ACCEPTS_INTERVAL
-            log! "Timed out after #{interval} seconds"
-            procline paused? ? "Paused" : "Waiting for #{queue_names}"
+          if paused?
+            procline "Paused"
+            pause while paused? # keep sleeping while paused
+          end
+
+          if (job = (RESERVE_ACCEPTS_INTERVAL ? reserve(interval) : reserve))
+            log "got: #{job.inspect}"
+
+            job.worker = self
+            run_hook :before_fork, job
+            working_on job
+
+            procline "Processing #{job.queue} since #{Time.now.to_i}"
+
+            perform(job, &block)
+
+            done_working
           else
-            log! "Sleeping for #{interval} seconds"
-            procline paused? ? "Paused" : "Waiting for #{queue_names}"
-            sleep interval
+            break if interval.zero?
+            if RESERVE_ACCEPTS_INTERVAL
+              log! "Timed out after #{interval} seconds"
+              procline paused? ? "Paused" : "Waiting for #{queue_names}"
+            else
+              log! "Sleeping for #{interval} seconds"
+              procline paused? ? "Paused" : "Waiting for #{queue_names}"
+              sleep interval
+            end
           end
         end
-      end
-      
-      unregister_worker
-    rescue Exception => exception
-      unregister_worker(exception)
-    end
 
-    # No forking with JRuby !
-    # @see Resque::Worker#fork
-    def fork # :nodoc
-      @cant_fork = true
-      nil # important due #work
+        unregister_worker
+      rescue Exception => exception
+        unregister_worker(exception)
+      end
+
+      # No forking with JRuby !
+      # @see Resque::Worker#fork
+      def fork # :nodoc
+        @cant_fork = true
+        nil # important due #work
+      end
+
     end
 
     # @see Resque::Worker#enable_gc_optimizations
@@ -281,10 +302,9 @@ module Resque
 
     # @see Resque::Worker#procline
     def procline(string = nil)
-      # do not change $0 as this method otherwise would ...
       if string.nil?
-        @procline # and act as a reader if no argument given
-      else
+        @procline ||= nil # act as a reader if no string given
+      else # avoid setting $0
         log! @procline = "resque-#{Resque::Version}: #{string}"
       end
     end

@@ -1,12 +1,12 @@
 require File.expand_path('test_helper', File.dirname(__FILE__) + '/..')
 require 'delayed/jruby_worker'
 
-gem_spec = Gem.loaded_specs['delayed_job']
+gem_spec = Gem.loaded_specs['delayed_job'] if defined? Gem
 puts "loaded gem 'delayed_job' '#{gem_spec.version.to_s}'" if gem_spec
 
 module Delayed
   class JRubyWorkerTest < Test::Unit::TestCase
-    
+
     def self.startup
       JRuby::Rack::Worker.load_jar
     end
@@ -15,9 +15,9 @@ module Delayed
       require "logger"; require 'stringio'
       Delayed::Worker.logger = Logger.new(StringIO.new)
     end
-    
+
     test "new works with a hash" do
-      assert_nothing_raised do 
+      assert_nothing_raised do
         Delayed::JRubyWorker.new({})
       end
     end
@@ -35,19 +35,19 @@ module Delayed
       worker.name = nil
       assert_match /^host:.*?thread:.*?/, worker.name
     end
-    
+
     test "loops on start" do
       worker = new_worker
       worker.expects(:loop).once
       worker.start
     end
-    
+
     test "traps (signals) on start" do
       worker = new_worker
       worker.expects(:trap).at_least_once
       worker.stubs(:loop)
       worker.start
-      
+
       assert_equal worker.class, new_worker.method(:trap).owner
     end
 
@@ -67,7 +67,7 @@ module Delayed
         @_at_exit_block.call
       end
       worker.stubs(:loop)
-      
+
       worker.start
       assert ! worker.stop?
       job_class = stub_Delayed_Job # Delayed::Job
@@ -75,7 +75,7 @@ module Delayed
       worker.call_at_exit
       assert_true worker.stop?
     end
-    
+
     test "name is made of [prefix] host pid and thread" do
       worker = nil; lock = java.lang.Object.new
       thread = java.lang.Thread.new do
@@ -90,7 +90,7 @@ module Delayed
       thread.name = 'worker_2'
       thread.start
       lock.synchronized { lock.wait }
-      
+
       # prefix host pid thread
       parts = worker.name.split(' ')
       assert_equal 4, parts.length, parts.inspect
@@ -100,18 +100,18 @@ module Delayed
       assert_equal 'pid:' + Process.pid.to_s, parts[2]
       assert_equal 'thread:worker_2', parts[3]
     end
-    
+
     test "to_s is worker name" do
       worker = new_worker
       worker.name_prefix = '42'
       assert_equal worker.name, worker.to_s
     end
-    
+
     test "performs the reserved job on start" do
       worker = new_worker
       worker.stubs(:loop).yields
       worker.stubs(:at_exit)
-      
+
       job_class = stub_Delayed_Job # Delayed::Job
       job_counter = 0
       job_class.expects(:reserve).at_least_once.with(worker).returns do
@@ -119,12 +119,12 @@ module Delayed
         job.expects(:perform).once
         job
       end
-      
+
       worker.start
     end
-    
+
     begin
-      
+
       context "with backend" do
 
         def self.startup
@@ -138,7 +138,7 @@ module Delayed
             Delayed::Worker.backend = :active_record
           end
         end
-        
+
         setup do
           Delayed::Worker.logger = Logger.new(STDOUT)
           Delayed::Worker.logger.level = Logger::DEBUG
@@ -147,15 +147,15 @@ module Delayed
           #  def self.silence; yield; end # disable silence
           #end
         end
-        
+
         class TestJob
 
           def initialize(param)
             @param = param
           end
-          
+
           @@performed = nil
-          
+
           def perform
             puts "#{self}#perform param = #{@param}"
             raise "already performed" if @@performed
@@ -170,35 +170,35 @@ module Delayed
           Thread.new { worker.start }
           sleep(0.20)
           assert ! worker.stop?
-          
+
           assert_equal :huu, TestJob.send(:class_variable_get, :'@@performed')
-          
+
           worker.stop
           sleep(0.15)
           assert worker.stop?
         end
-      
+
       end
-      
+
     end
-    
+
     private
-    
+
     def new_worker(options = {})
       Delayed::JRubyWorker.new options
     end
-    
+
     def stub_Delayed_Job
       Delayed.const_set :Job, const = mock('Delayed::Job')
       const
     end
-    
+
     teardown do
       if defined?(Delayed::Job) && defined?(Mocha) &&
           Delayed::Job.is_a?(Mocha::Mock)
         Delayed.send(:remove_const, :Job)
       end
     end
-    
+
   end
 end

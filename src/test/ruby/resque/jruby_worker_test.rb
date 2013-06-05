@@ -1,7 +1,7 @@
 require File.expand_path('test_helper', File.dirname(__FILE__) + '/..')
 require 'resque/jruby_worker'
 
-gem_spec = Gem.loaded_specs['resque']
+gem_spec = Gem.loaded_specs['resque'] if defined? Gem
 puts "loaded gem 'resque' '#{gem_spec.version.to_s}'" if gem_spec
 
 module Resque
@@ -10,6 +10,8 @@ module Resque
     def self.startup
       JRuby::Rack::Worker.load_jar
     end
+
+    RESQUE_2x = Resque::JRubyWorker::RESQUE_2x
 
     test "new fails without a queue arg" do
       assert_raise(Resque::NoQueueError) do
@@ -95,7 +97,9 @@ module Resque
       thread = java.lang.Thread.new do
         begin
           worker = Resque::JRubyWorker.new('q1', 'q2')
-          assert_not_nil worker.to_s
+          assert worker.to_s
+        rescue => e
+          fail e
         ensure
           lock.synchronized { lock.notify }
         end
@@ -104,8 +108,10 @@ module Resque
       thread.start
       lock.synchronized { lock.wait }
 
+      assert worker, "thread has not completed creating a worker yet"
+
       parts = worker.to_s.split(':')
-      assert_equal 3, parts.length, parts.inspect
+      assert_equal 3, parts.length
       require 'socket'
       assert_equal Socket.gethostname, parts[0]
       assert_equal "#{Process.pid}[worker_1]", parts[1]
@@ -164,9 +170,15 @@ module Resque
 
     test "registers a worker with the system" do
       worker = new_worker
-      worker.stubs(:redis).returns redis = mock('redis')
+      if RESQUE_2x
+        worker.worker_registry.stubs(:redis).returns redis = mock('redis')
+        redis.stubs(:pipelined).yields
+      else
+        worker.stubs(:redis).returns redis = mock('redis')
+      end
       redis.expects(:sadd).with :workers, worker
       redis.stubs(:set)
+
       worker.register_worker
 
       workers = Resque::JRubyWorker.system_registered_workers
@@ -177,9 +189,15 @@ module Resque
       worker = new_worker
       worker.send(:system_register_worker)
 
-      worker.stubs(:redis).returns redis = mock('redis')
+      if RESQUE_2x
+        worker.worker_registry.stubs(:redis).returns redis = mock('redis')
+        redis.stubs(:pipelined).yields
+      else
+        worker.stubs(:redis).returns redis = mock('redis')
+      end
       redis.expects(:srem).with :workers, worker
       redis.stubs(:get); redis.stubs(:del)
+
       worker.unregister_worker
 
       workers = Resque::JRubyWorker.system_registered_workers
@@ -299,6 +317,7 @@ module Resque
 
         test "worker (still) finds a plain-old worker" do
           worker = Resque::Worker.new('huu')
+          worker.stubs(:register_signal_handlers)
           worker.send(:startup) # protected since 2.0
           assert found = worker_find(worker.id)
           assert_equal 'Resque::Worker', found.class.name
@@ -324,10 +343,22 @@ module Resque
           worker.startup
 
           Resque.enqueue(TestJob, 42)
-          Thread.new { worker.work(0.25) }
-          sleep(0.30)
-          assert_match /Paused|Waiting for low/, worker.procline
+          Thread.new do
+            begin
+              if RESQUE_2x
+                worker.options.to_hash[:interval] = 0.25
+                worker.work
+              else
+                worker.work(0.25)
+              end
+            rescue => e
+              fail e
+            end
+          end
 
+          sleep(0.30)
+
+          assert_match /Paused|Waiting for low/, worker.procline
           assert_equal 42, TestJob.send(:class_variable_get, :'@@performed')
 
           workers = Resque::JRubyWorker.system_registered_workers
