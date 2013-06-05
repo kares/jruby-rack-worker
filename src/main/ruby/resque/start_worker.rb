@@ -6,14 +6,14 @@ begin
   queues = (env['QUEUES'] || env['QUEUE'] || '*').to_s.split(',')
   worker = Resque::JRubyWorker.new(*queues)
   
-  if worker.respond_to?(:very_verbose)
+  if worker.respond_to?(:very_verbose) && ! defined?(Resque.logger)
     worker.verbose = env['LOGGING'] || env['VERBOSE']
     worker.very_verbose = env['VVERBOSE']
     if ! worker.verbose && ! worker.very_verbose
       worker.logger = Rails.logger if defined?(Rails.logger)
     end
-  else # Resque 2.0 [master]
-    if logging = env['LOGGING'] || env['VERBOSE'] && worker.logger
+  else # 2.0 [master] (no verbose=) or >= 1.23.0 (verbose= deprecated)
+    if ( logging = env['LOGGING'] || env['VERBOSE'] ) && worker.logger
       if level = Logger.const_get(logging.upcase) rescue nil
         worker.logger.level = level
       end
