@@ -179,7 +179,11 @@ module Resque
       redis.expects(:sadd).with :workers, worker
       redis.stubs(:set)
 
-      worker.register_worker
+      if RESQUE_2x
+        worker.worker_registry.register
+      else
+        worker.register_worker
+      end
 
       workers = Resque::JRubyWorker.system_registered_workers
       assert_include workers, worker.id
@@ -198,7 +202,11 @@ module Resque
       redis.expects(:srem).with :workers, worker
       redis.stubs(:get); redis.stubs(:del)
 
-      worker.unregister_worker
+      if RESQUE_2x
+        worker.worker_registry.unregister
+      else
+        worker.unregister_worker
+      end
 
       workers = Resque::JRubyWorker.system_registered_workers
       assert_not_include workers, worker.id
@@ -223,7 +231,7 @@ module Resque
         end
       else # Resque 2.x
         assert_nothing_raised(RuntimeError) do
-          worker.unregister_worker(exception)
+          worker.worker_registry.unregister(exception)
         end
       end
     end

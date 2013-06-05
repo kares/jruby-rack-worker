@@ -25,9 +25,9 @@ module Resque
       def work(&block)
         startup
         work_loop(&block)
-        unregister_worker
+        worker_registry.unregister
       rescue Exception => exception
-        unregister_worker(exception)
+        worker_registry.unregister(exception)
       end
 
       def fork_for_child(job, &block)
@@ -256,20 +256,29 @@ module Resque
 
     if RESQUE_2x
 
-      def register_worker
-        outcome = worker_registry.register
-        system_register_worker if JRUBY
-        outcome
-      end
+      WorkerRegistry.class_eval do
 
-      def unregister_worker(exception = nil)
-        system_unregister_worker if JRUBY
-        if exception
-          worker_registry.unregister(exception)
-        else
-          worker_registry.unregister
+        alias_method :do_register, :register
+
+        def register
+          outcome = do_register
+          if @worker.is_a?(JRubyWorker)
+            @worker.send(:system_register_worker) if JRUBY
+          end
+          outcome
         end
-      end # removed on 2.0 [master]
+
+        alias_method :do_unregister, :unregister
+
+        def unregister(exception = nil)
+          outcome = do_unregister(exception)
+          if @worker.is_a?(JRubyWorker)
+            @worker.send(:system_unregister_worker) if JRUBY
+          end
+          outcome
+        end
+
+      end
 
     else
 
