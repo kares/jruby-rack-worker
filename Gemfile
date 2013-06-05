@@ -4,9 +4,9 @@ gem 'jruby-rack'
 
 group :test do
   gem 'rake'
-  gem 'test-unit', '2.5.3'
+  gem 'test-unit', '~> 2.5.3'
   gem 'test-unit-context'
-  gem 'mocha', '~> 0.12.6'
+  gem 'mocha'
 end
 
 group :delayed_job do
@@ -31,7 +31,7 @@ end
 group :resque do
   if ENV['resque']
     if ENV['resque'] == 'master'
-      gem 'resque', :git => 'git://github.com/defunkt/resque.git'
+      gem 'resque', :git => 'git://github.com/resque/resque.git'
     else
       gem 'resque', ENV['resque']
     end

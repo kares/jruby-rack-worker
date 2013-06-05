@@ -1,14 +1,15 @@
 begin
-  require 'bundler/setup'
+  require 'bundler'
 rescue LoadError => e
   require('rubygems') && retry
   raise e
 end
+Bundler.setup # require(:default, :test)
 
 gem 'test-unit' # uninitialized constant Test::Unit::TestResult::TestResultFailureSupport
 require 'test/unit'
 require 'test/unit/context'
-require 'mocha'
+begin; require 'mocha/setup'; rescue LoadError; require 'mocha'; end
 
 require 'jruby/rack/worker'
 
