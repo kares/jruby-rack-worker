@@ -33,9 +33,17 @@ begin
     end
   else # 2.0 [master] (no verbose=) or >= 1.23.0 (verbose= deprecated)
     if verbose && worker.logger
-      if level = Logger.const_get(verbose.upcase) rescue nil
-        worker.logger.level = level
+      level = Integer(verbose) rescue verbose
+      unless level.is_a?(Numeric)
+        level = level.to_s.strip.upcase
+        unless ( Logger::Severity.const_defined?(level) rescue nil )
+          level = 'INFO'
+        end
+        level = Logger.const_get(level)
       end
+      worker.logger.level = level if level
+    elsif very_verbose && worker.logger
+      worker.logger.level = Logger::DEBUG
     else
       worker.logger = Rails.logger if defined?(Rails.logger)
     end
