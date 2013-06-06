@@ -202,7 +202,7 @@ module Resque
         if worker.respond_to?(:unregister_worker)
           worker.unregister_worker
         else # Resque 2.x
-          WorkerRegistry.new(worker).unregister
+          Registry.for(worker).unregister
         end
       end
     end
@@ -256,28 +256,37 @@ module Resque
 
     if RESQUE_2x
 
-      WorkerRegistry.class_eval do
+      # Resque::JRubyWorker::Registry < Resque::WorkerRegistry
+      class Registry < WorkerRegistry
 
-        alias_method :do_register, :register
+        def self.for(worker)
+          worker.is_a?(JRubyWorker) ? new(worker) : WorkerRegistry.new(worker)
+        end
 
         def register
-          outcome = do_register
+          outcome = super
           if @worker.is_a?(JRubyWorker)
             @worker.send(:system_register_worker) if JRUBY
+          else
+            warn "unregister called with non-jruby worker: #{@worker}"
           end
           outcome
         end
-
-        alias_method :do_unregister, :unregister
 
         def unregister(exception = nil)
-          outcome = do_unregister(exception)
+          outcome = super
           if @worker.is_a?(JRubyWorker)
             @worker.send(:system_unregister_worker) if JRUBY
+          else
+            warn "unregister called with non-jruby worker: #{@worker}"
           end
           outcome
         end
 
+      end
+
+      def worker_registry
+        @worker_registry ||= Registry.new(self)
       end
 
     else
@@ -485,18 +494,19 @@ module Resque
 
   end
 
-  Worker.class_eval do
+  ( JRubyWorker::RESQUE_2x ? WorkerRegistry : Worker ).class_eval do
     # Returns a single worker object. Accepts a string id.
     def self.find(worker_id)
-      if respond_to?(:exists?) ? exists?(worker_id) : WorkerRegistry.exists?(worker_id)
+      if exists?(worker_id)
         # NOTE: a pack so that Resque::Worker.find returns
         # correct JRubyWorker class for thread-ed workers:
         host, pid, thread, queues = JRubyWorker.split_id(worker_id)
-        queues = queues.split(',')
+        queues_args = queues.split(',')
+        queues_args = [ queues_args ] if JRubyWorker::RESQUE_2x
         if thread # "#{hostname}:#{pid}[#{thread_id}]:#{@queues.join(',')}"
-          worker = JRubyWorker.new(*queues)
+          worker = JRubyWorker.new(*queues_args)
         else
-          worker = new(*queues) # super
+          worker = Worker.new(*queues_args)
         end
         worker.to_s = worker_id
         worker
@@ -505,4 +515,5 @@ module Resque
       end
     end
   end
+
 end
