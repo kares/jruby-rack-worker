@@ -250,16 +250,20 @@ module Resque
 
     test "uses logger.info when logging verbose" do
       worker = new_worker
-      worker.verbose = true if worker.respond_to?(:verbose)
-      worker.logger.expects(:info).once.with { |msg| msg =~ /huu!/ }
-      worker.log 'huu!'
+      with_logger_severity_deprecation(:off) do
+        worker.verbose = true if worker.respond_to?(:verbose)
+        worker.logger.expects(:info).once.with { |msg| msg =~ /huu!/ }
+        worker.log 'huu!'
+      end
     end
 
     test "uses logger.debug when logging very-verbose" do
       worker = new_worker
-      worker.very_verbose = true if worker.respond_to?(:very_verbose)
-      worker.logger.expects(:debug).once.with { |msg| msg =~ /huu!/ }
-      worker.log! 'huu!'
+      with_logger_severity_deprecation(:off) do
+        worker.very_verbose = true if worker.respond_to?(:very_verbose)
+        worker.logger.expects(:debug).once.with { |msg| msg =~ /huu!/ }
+        worker.log! 'huu!'
+      end
     end
 
     test "returns a logger instance" do
@@ -347,7 +351,9 @@ module Resque
 
         test "works (integration)" do
           worker = Resque::JRubyWorker.new('low')
-          worker.verbose = true if worker.respond_to?(:verbose)
+          with_logger_severity_deprecation(:off) do
+            worker.verbose = true if worker.respond_to?(:verbose)
+          end
           worker.startup
 
           Resque.enqueue(TestJob, 42)
@@ -417,6 +423,14 @@ module Resque
     end
 
     private
+
+    def with_logger_severity_deprecation(off = true)
+      severity_deprecation = $warned_logger_severity_deprecation
+      $warned_logger_severity_deprecation = off
+      yield
+    ensure
+      $warned_logger_severity_deprecation = severity_deprecation
+    end
 
     def new_worker
       Resque::JRubyWorker.new('*')
