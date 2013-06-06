@@ -99,7 +99,7 @@ module Resque
           worker = Resque::JRubyWorker.new('q1', 'q2')
           assert worker.to_s
         rescue => e
-          fail e
+          fail_in_thread e
         ensure
           lock.synchronized { lock.notify }
         end
@@ -298,6 +298,34 @@ module Resque
       assert_true worker.shutdown?
     end
 
+    test "starts a worker" do
+      ENV['INTERVAL'] = '3.5'
+      ENV['QUEUE'] = 'notifications'
+      begin
+        expected_args = [ ENV['QUEUE'] ]
+        expected_args << {
+          :interval => 3.5,
+          :daemon => false,
+          :fork_per_job => false,
+          :run_at_exit_hooks => true
+        } if RESQUE_2x
+
+        worker = Resque::JRubyWorker.new(expected_args)
+
+        Resque::JRubyWorker.expects(:new).with(*expected_args).returns worker
+
+        if RESQUE_2x
+          worker.expects(:work)
+        else
+          worker.expects(:work).with('3.5')
+        end
+
+        load 'resque/start_worker.rb'
+      ensure
+        ENV['INTERVAL'] = nil; ENV['QUEUE'] = nil
+      end
+    end
+
     begin
       if Resque.respond_to?(:redis=)
         require 'redis/client'
@@ -349,7 +377,7 @@ module Resque
 
         end
 
-        test "works (integration)" do
+        test "(integration) works" do
           worker = Resque::JRubyWorker.new('low')
           with_logger_severity_deprecation(:off) do
             worker.verbose = true if worker.respond_to?(:verbose)
@@ -366,7 +394,7 @@ module Resque
                 worker.work(0.25)
               end
             rescue => e
-              fail e
+              fail_in_thread e
             end
           end
 
@@ -383,28 +411,22 @@ module Resque
           assert_not_include workers, worker.id
         end
 
+        if defined? Resque::WorkerRegistry
+          WorkerAccess = Resque::WorkerRegistry
+        else
+          WorkerAccess = Resque::Worker
+        end
+
         def worker_all
-          if defined? Resque::Worker.all
-            Resque::Worker.all
-          else
-            Resque::WorkerRegistry.all
-          end
+          WorkerAccess.all
         end
 
         def worker_find(id)
-          if defined? Resque::Worker.find
-            Resque::Worker.find(id)
-          else
-            Resque::WorkerRegistry.find(id)
-          end
+          WorkerAccess.find(id)
         end
 
         def worker_exists?(id)
-          if defined? Resque::Worker.exists?
-            Resque::Worker.exists?(id)
-          else
-            Resque::WorkerRegistry.exists?(id)
-          end
+          WorkerAccess.exists?(id)
         end
 
       end
@@ -423,6 +445,12 @@ module Resque
     end
 
     private
+
+    def fail_in_thread(e)
+      puts "thread failed: #{e}"
+      e.backtrace.each { |b| puts b }
+      raise e
+    end
 
     def with_logger_severity_deprecation(off = true)
       severity_deprecation = $warned_logger_severity_deprecation

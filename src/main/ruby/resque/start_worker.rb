@@ -3,28 +3,48 @@ require 'jruby/rack/worker/env'
 env = JRuby::Rack::Worker::ENV
 begin
   require 'resque/jruby_worker'
+
   queues = (env['QUEUES'] || env['QUEUE'] || '*').to_s.split(',')
+  verbose = env['LOGGING'] || env['VERBOSE']
+  very_verbose = env['VVERBOSE']
+
+  if defined? Resque::Options # Resque::VERSION >= 2.0.0
+    queues << ( options = {
+        :daemon => false,
+        :fork_per_job => false,
+        :run_at_exit_hooks => true
+    } )
+    timeout = env['TIMEOUT'] || env['timeout']
+    options[:timeout] = Float(timeout) if timeout
+    interval = env['INTERVAL'] || env['interval']
+    options[:interval] = Float(interval) if interval
+    interval = nil # work() does not accept argument
+  else
+    interval = env['INTERVAL']
+  end
+
   worker = Resque::JRubyWorker.new(*queues)
-  
+
   if worker.respond_to?(:very_verbose) && ! defined?(Resque.logger)
-    worker.verbose = env['LOGGING'] || env['VERBOSE']
-    worker.very_verbose = env['VVERBOSE']
+    worker.verbose = verbose
+    worker.very_verbose = very_verbose
     if ! worker.verbose && ! worker.very_verbose
       worker.logger = Rails.logger if defined?(Rails.logger)
     end
   else # 2.0 [master] (no verbose=) or >= 1.23.0 (verbose= deprecated)
-    if ( logging = env['LOGGING'] || env['VERBOSE'] ) && worker.logger
-      if level = Logger.const_get(logging.upcase) rescue nil
+    if verbose && worker.logger
+      if level = Logger.const_get(verbose.upcase) rescue nil
         worker.logger.level = level
       end
     else
       worker.logger = Rails.logger if defined?(Rails.logger)
     end
   end
-  
+
   worker.log "Starting worker #{worker}"
-  interval = env['INTERVAL']
+
   interval ? worker.work(interval) : worker.work
+
 rescue Resque::NoQueueError => e
   msg = "ENV['QUEUES'] or ENV['QUEUE'] is empty, please set it " +
   "(or remove it and worker will process all '*' queues), e.g.\n" +
