@@ -2,9 +2,9 @@
 
 Thread based workers on top of [jruby-rack](http://github.com/jruby/jruby-rack).
 
-With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for: 
+With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for:
 
-* [Resque](http://github.com/defunkt/resque) (>= 1.20.0)
+* [Resque](http://github.com/defunkt/resque) (>= 1.20.0, ~> 2.0.0 [master])
 * [Delayed::Job](http://github.com/collectiveidea/delayed_job) (~> 2.1, >= 3.0)
 * [Navvy](http://github.com/jeffkreeftmeijer/navvy) (not-maintained)
 
@@ -14,25 +14,25 @@ With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for:
 
 ## Motivation
 
-Ruby attempts to stay pretty close to UNIX and most popular workers have been 
-modeled the "spawn a background process" way. [JRuby](http://jruby.org) brings 
-Java to the table, where "Young Java Knights" are taught to use threads 
+Ruby attempts to stay pretty close to UNIX and most popular workers have been
+modeled the "spawn a background process" way. [JRuby](http://jruby.org) brings
+Java to the table, where "Young Java Knights" are taught to use threads
 whenever in a need to compute something in parallel with serving requests.
 
 There's no right or wrong way of doing this. If you do expect chaos like Resque
-proclaims - have long running jobs that consume a lot of memory they have trouble 
+proclaims - have long running jobs that consume a lot of memory they have trouble
 releasing (e.g. due C extensions) run a separate process for sure.
-But otherwise (after all C exts usually have a native Java alternative on JRuby) 
-having predictable thread-safely written workers, one should be fine with 
+But otherwise (after all C exts usually have a native Java alternative on JRuby)
+having predictable thread-safely written workers, one should be fine with
 running them concurrently as part of the application in a (daemon) thread.
 
 This does have the advantage of keeping the deployment simple and saving some
-precious memory (most notably with `threadsafe!` mode) that would have been 
-eaten by the separate process. Besides, your application might warm up faster 
+precious memory (most notably with `threadsafe!` mode) that would have been
+eaten by the separate process. Besides, your application might warm up faster
 and start benefiting from JRuby's runtime optimalizations slightly sooner ...
 
-On the other hand your jobs should be fairly simple and complete "fast" (in a 
-rate of seconds rather than several minutes or hours) as they will live and 
+On the other hand your jobs should be fairly simple and complete "fast" (in a
+rate of seconds rather than several minutes or hours) as they will live and
 restart with the lifecycle of the deployed application and application server.
 
 
@@ -45,58 +45,62 @@ Configure your worker in **web.xml**, you will need to add a context listener
 that will start (daemon) threads when your application boots and a script to be
 executed (should be an "endless" loop-ing script). Sample configuration :
 
-    <context-param>
-      <param-name>jruby.worker.script</param-name>
-      <param-value> 
-        <!-- any script with an end-less loop : ->
-        require 'delayed/jruby_worker'
-        Delayed::JRubyWorker.new.start
-      </param-value>
-    </context-param>
+```xml
+  <context-param>
+    <param-name>jruby.worker.script</param-name>
+    <param-value>
+      <!-- any script with an end-less loop : ->
+      require 'delayed/jruby_worker'
+      Delayed::JRubyWorker.new.start
+    </param-value>
+  </context-param>
 
-    <listener>
-      <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
-    </listener>
+  <listener>
+    <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
+  </listener>
+```
 
-The `WorkerContextListener` needs to be executed (and thus configured) after the 
-`RailsServletContextListener`/`RackServletContextListener` as it expects the 
+The `WorkerContextListener` needs to be executed (and thus configured) after the
+`RailsServletContextListener`/`RackServletContextListener` as it expects the
 JRuby-Rack environment to be booter and available.
 
 For built-in worker support (if you're happy with the defaults) simply specify
 the **jruby.worker** context parameter (optionally with custom params supported
 by the worker) e.g. :
 
-    <context-param>
-      <param-name>jruby.worker</param-name>
-      <param-value>resque</param-value>
-    </context-param>
-    <context-param>
-      <param-name>QUEUES</param-name>
-      <param-value>mails,posts</param-value>
-    </context-param>
-    <context-param>
-      <param-name>INTERVAL</param-name>
-      <param-value>2.5</param-value>
-    </context-param>
+```xml
+  <context-param>
+    <param-name>jruby.worker</param-name>
+    <param-value>resque</param-value>
+  </context-param>
+  <context-param>
+    <param-name>QUEUES</param-name>
+    <param-value>mails,posts</param-value>
+  </context-param>
+  <context-param>
+    <param-name>INTERVAL</param-name>
+    <param-value>2.5</param-value>
+  </context-param>
 
-    <listener>
-      <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
-    </listener>
+  <listener>
+    <listener-class>org.kares.jruby.rack.WorkerContextListener</listener-class>
+  </listener>
+```
 
 Sample deployment descriptor including optional parameters:
 [web.xml](src/test/resources/sample.web.xml).
 
 ### Threads
 
-Number of worker threads as well as their priorities can be configured (by 
+Number of worker threads as well as their priorities can be configured (by
 default a single worker thread is started with the default NORM priority) :
 
 - *jruby.worker.thread.count* please be sure you do not start too many threads,
   consider tuning your worker settings if possible first e.g. for DJ/Resque the
   sleep interval if you feel like the worker is not performing enough work.
-- *jruby.worker.thread.priority* maps to standard (Java) thread priority which 
+- *jruby.worker.thread.priority* maps to standard (Java) thread priority which
   is a value <MIN, MAX> where MIN == 1 and MAX == 10 (the NORM priority is 5),
-  this is useful e.g. if you're load gets high (lot of request serving threads) 
+  this is useful e.g. if you're load gets high (lot of request serving threads)
   and you do care about requests more than about executing worker code you might
   consider decreasing the priority (by 1).
 
@@ -159,12 +163,16 @@ Warbler checks for a *config/web.xml.erb* thus configure the worker there, e.g. 
 </web-app>
 ```
 
-If you're deploying a Rails application on JRuby it's highly **recommended** to 
-uncomment `config.threadsafe!`. Otherwise, if unsure or you're code is not 
-thread-safe yet you'll end up polling several JRuby runtimes in a single process, 
-in this case however each worker thread will use (block) an application runtime 
-from the pool (consider it while setting 
+If you're deploying a Rails application on JRuby it's highly **recommended** to
+uncomment `config.threadsafe!`. Otherwise, if unsure or you're code is not
+thread-safe yet you'll end up polling several JRuby runtimes in a single process,
+in this case however each worker thread will use (block) an application runtime
+from the pool (consider it while setting
 `jruby.min.runtimes` and `jruby.max.runtimes` parameters).
+
+### Trinidad
+
+Trinidad provides you with an [extension][1] so you do not have to deal with XML.
 
 ### Custom Workers
 
@@ -183,7 +191,7 @@ got a worker spawning script (e.g. a rake task) start there to write the worker
    class variables are not being used to store worker state)
 
  * refactor your worker's exit code from a (process oriented) signal based `trap`
-   to an `at_exit` hook - which respects the JRuby environment your workers are 
+   to an `at_exit` hook - which respects the JRuby environment your workers are
    going to be running in
 
 Keep in mind that if you do configure to use multiple threads the script will be
@@ -193,8 +201,8 @@ a separate file that you'll require from the script.
 See the [Delayed::Job](/kares/jruby-rack-worker/tree/master/src/main/ruby/delayed)
 JRuby "adapted" worker code for an inspiration.
 
-If you'd like to specify custom parameters you can do so in the deployment 
-descriptor as context init parameters or as java system properties, use the 
+If you'd like to specify custom parameters you can do so in the deployment
+descriptor as context init parameters or as java system properties, use the
 following code to obtain them :
 
 ```ruby
@@ -241,7 +249,8 @@ Build the gem (includes the .jar packaged) :
 
 ## Copyright
 
-Copyright (c) 2013 [Karol Bucek](https://github.com/kares). 
+Copyright (c) 2013 [Karol Bucek](https://github.com/kares).
 See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.
 
 [0]: https://secure.travis-ci.org/kares/jruby-rack-worker.png
+[1]: https://github.com/trinidad/trinidad_worker_extension
