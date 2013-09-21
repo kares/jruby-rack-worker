@@ -2,13 +2,12 @@ language: ruby
 rvm:
   - jruby-18mode
   - jruby-19mode
-  #- jruby-head
 branches:
   only:
     - master
 services:
   - redis-server
 env:
-  - resque="master" delayed_job="~>3.0"
-  #- resque="master" JRUBY_OPTS="--1.9"
-  - resque="~>1.23" delayed_job="~>2.1"
+  - resque="master" delayed_job="~>4.0"
+  - resque="~>1.25" delayed_job="~>3.0"
+  - resque="~>1.23.1" delayed_job="~>2.1"
