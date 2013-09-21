@@ -172,10 +172,10 @@ module Resque
       worker = new_worker
       if RESQUE_2x
         worker.worker_registry.stubs(:redis).returns redis = mock('redis')
-        redis.stubs(:pipelined).yields
       else
         worker.stubs(:redis).returns redis = mock('redis')
       end
+      redis.stubs(:pipelined).yields
       redis.expects(:sadd).with :workers, worker
       redis.stubs(:set)
 
@@ -192,13 +192,13 @@ module Resque
     test "unregisters a worker from system" do
       worker = new_worker
       worker.send(:system_register_worker)
-
       if RESQUE_2x
         worker.worker_registry.stubs(:redis).returns redis = mock('redis')
-        redis.stubs(:pipelined).yields
       else
         worker.stubs(:redis).returns redis = mock('redis')
       end
+      redis.stubs(:pipelined).yields
+
       redis.expects(:srem).with :workers, worker
       redis.stubs(:get); redis.stubs(:del)
 
@@ -215,6 +215,7 @@ module Resque
     test "unregisters worker raises when exception given" do
       worker = new_worker
       worker.stubs(:redis).returns redis = mock('redis')
+      redis.stubs(:pipelined).yields
       redis.stubs(:srem).with :workers, worker
       redis.stubs(:get); redis.stubs(:del)
 
