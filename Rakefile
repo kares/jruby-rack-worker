@@ -47,7 +47,7 @@ namespace :ivy do
 
   task :install do
     Rake::Task["ivy:download"].invoke unless File.exist?(ivy_jar_file)
-    
+
     ant.path :id => 'ivy.lib.path' do
       fileset :dir => ivy_jar_dir, :includes => '*.jar'
     end
@@ -57,7 +57,7 @@ namespace :ivy do
   task :clean do
     rm_rf LIB_BASE_DIR
   end
-  
+
 end
 
 task :retrieve => :"ivy:install" do
@@ -112,7 +112,7 @@ task :gem => [ :jar ] do
 
   cp FileList["LICENSE", "README.md"], gem_out
   cp out_jar_path, gem_out_lib
-  
+
   if (jars = FileList["#{gem_out_lib}/*.jar"].to_a).size > 1
     abort "too many jars! #{jars.map{ |j| File.basename(j) }.inspect}\nrake clean first"
   end
@@ -123,7 +123,7 @@ task :gem => [ :jar ] do
       include :name => 'jruby/**/*.rb'
     end
   end
-  
+
   Dir.chdir(gem_out) do
     rm_f gemspec_file = "#{PROJECT_NAME}.gemspec"
     gem_spec = Gem::Specification.new do |spec|
@@ -132,23 +132,24 @@ task :gem => [ :jar ] do
       spec.authors = ["Karol Bucek"]
       spec.email = ["self@kares.org"]
       spec.homepage = 'http://github.com/kares/jruby-rack-worker'
+      spec.license = 'Apache 2.0'
       spec.summary = 'Threaded Workers with JRuby-Rack'
-      spec.description = 
+      spec.description =
         "Implements a thread based worker pattern on top of JRuby-Rack. " +
-        "Useful if you'd like to run background workers within your (deployed) " + 
-        "web-application (concurrently in 'native' threads) instead of using " + 
+        "Useful if you'd like to run background workers within your (deployed) " +
+        "web-application (concurrently in 'native' threads) instead of using " +
         "separate daemon processes. " +
-        "Provides (thread-safe) implementations for popular worker libraries " + 
-        "such as Resque and Delayed::Job, but one can easily write their own " + 
+        "Provides (thread-safe) implementations for popular worker libraries " +
+        "such as Resque and Delayed::Job, but one can easily write their own " +
         "'daemon' scripts as well."
-      
+
       spec.add_dependency 'jruby-rack', ">= 1.1.10"
       spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
       spec.has_rdoc = false
       spec.rubyforge_project = '[none]'
     end
     Gem::Builder.new(gem_spec).build
-    File.open(gemspec_file, 'w') {|f| f << gem_spec.to_ruby }
+    File.open(gemspec_file, 'w') { |f| f << gem_spec.to_ruby }
     mv FileList['*.gem'], '..'
   end
 end
@@ -172,7 +173,7 @@ task :'bundler:setup' do
 end
 
 namespace :test do
-  
+
   desc "run ruby tests"
   task :ruby do # => :'bundler:setup'
     Rake::Task['jar'].invoke unless File.exists?(out_jar_path)
@@ -181,7 +182,7 @@ namespace :test do
     test_files = FileList[test].map { |path| path.sub('src/test/ruby/', '') }
     ruby "-Isrc/main/ruby:src/test/ruby", "-e #{test_files.inspect}.each { |test| require test }"
   end
-  
+
   desc "run java tests"
   task :java => :'test:compile' do
     mkdir_p TEST_RESULTS_DIR
@@ -207,7 +208,7 @@ namespace :test do
       end
     end
   end
-  
+
 end
 
 desc "run all tests"
