@@ -1,10 +1,10 @@
 # JRuby-Rack-Worker
 
-Thread based workers on top of [jruby-rack](http://github.com/jruby/jruby-rack).
+Thread based workers on top of [JRuby-Rack](http://github.com/jruby/jruby-rack).
 
 With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for:
 
-* [Resque](http://github.com/defunkt/resque) (>= 1.20.0, ~> 2.0.0 [master])
+* [Resque](http://github.com/defunkt/resque) (>= 1.21.0, ~> 2.0.0 [master])
 * [Delayed::Job](http://github.com/collectiveidea/delayed_job) (~> 2.1, >= 3.0)
 * [Navvy](http://github.com/jeffkreeftmeijer/navvy) (not-maintained)
 
@@ -231,7 +231,7 @@ end
 
 ## Build
 
-[JRuby](http://jruby.org) 1.6+ is required to build the project.
+[JRuby](http://jruby.org) 1.6.8+ is required to build the project.
 
 The build is performed by [rake](http://rake.rubyforge.org) which should be part
 of your JRuby installation, if you're experiencing conflicts with another Ruby and
