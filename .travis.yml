@@ -11,3 +11,7 @@ env:
   - resque="master" delayed_job="~>4.0"
   - resque="~>1.25" delayed_job="~>3.0"
   - resque="~>1.23.1" delayed_job="~>2.1"
+matrix:
+  exclude: # AR 4.0 needs Ruby 1.9.3+ :
+    - rvm: jruby-18mode
+      env: resque="master" delayed_job="~>4.0"
