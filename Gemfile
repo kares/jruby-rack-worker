@@ -16,7 +16,7 @@ group :delayed_job do
       gem 'delayed_job_active_record', :require => nil # for tests
     else
       gem 'delayed_job', version = ENV['delayed_job']
-      if version =~ /3\.\d/ # NOTE: does not handle '>= 2.1'
+      unless version =~ /~?\s?2\.\d/ # delayed_job_active_record only for DJ >= 3.0
         gem 'delayed_job_active_record', :require => nil # for tests
       end
     end
