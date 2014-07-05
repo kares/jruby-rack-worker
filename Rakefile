@@ -131,8 +131,8 @@ task :gem => [ :jar ] do
       spec.version = project_version
       spec.authors = ["Karol Bucek"]
       spec.email = ["self@kares.org"]
-      spec.homepage = 'http://github.com/kares/jruby-rack-worker'
-      spec.license = 'Apache 2.0'
+      spec.homepage = 'https://github.com/kares/jruby-rack-worker'
+      spec.license = 'Apache-2.0'
       spec.summary = 'Threaded Workers with JRuby-Rack'
       spec.description =
         "Implements a thread based worker pattern on top of JRuby-Rack. " +
