@@ -106,15 +106,16 @@ default a single worker thread is started with the default NORM priority) :
 
 ### Warbler
 
-If you're using [Warbler](http://caldersphere.rubyforge.org/warbler) to assemble
-your application you might simply declare a gem dependency with Bundler as your
-gems will be scanned for jars and packaged correctly:
+If you're using [Warbler](http://github.com/jruby/warbler) to assemble your
+application you might simply declare a gem dependency with Bundler as your
+gems will be scanned for .jars among all gem files and packaged correctly :
 
     gem 'jruby-rack-worker', :platform => :jruby, :require => nil
 
 Otherwise copy the jar into your *warble.rb* configured `config.java_libs`.
 
-Warbler checks for a *config/web.xml.erb* thus configure the worker there, e.g. :
+Warbler checks for a *config/web.xml.erb* (or simply a *config/web.xml*) thus
+configure the worker there, e.g. :
 
 ```
 <!DOCTYPE web-app PUBLIC
@@ -153,7 +154,7 @@ Warbler checks for a *config/web.xml.erb* thus configure the worker there, e.g. 
 
   <context-param>
     <param-name>jruby.worker</param-name>
-    <param-value>delayed_job</param-value> <!-- or resque or navvy -->
+    <param-value>delayed_job</param-value> <!-- or resque (navvy) -->
   </context-param>
 
   <listener>
@@ -163,12 +164,43 @@ Warbler checks for a *config/web.xml.erb* thus configure the worker there, e.g. 
 </web-app>
 ```
 
+NOTE: on Warbler 1.4.x the .jar files from gems might no longer get packaged unless
+configured to do so, assuming you only need the defaults and the worker jar, setup
+a *config/warble.rb* file as follow :
+
+```ruby
+# Warbler web application assembly configuration file
+Warbler::Config.new do |config|
+  # ...
+
+  # Additional Java .jar files to include.  Note that if .jar files are placed
+  # in lib (and not otherwise excluded) then they need not be mentioned here.
+  # JRuby and JRuby-Rack are pre-loaded in this list.  Be sure to include your
+  # own versions if you directly set the value
+  # config.java_libs += FileList["lib/java/*.jar"]
+
+  # If set to true, moves jar files into WEB-INF/lib.
+  # Prior to version 1.4.2 of Warbler this was done by default.
+  # But since 1.4.2 this config defaults to false.
+  # Alternatively, this option can be set to a regular expression, which will
+  # act as a jar selector -- only jar files that match the pattern will be
+  # included in the archive.
+  config.move_jars_to_webinf_lib = /jruby\-(core|stdlib|rack)/
+
+  # Value of RAILS_ENV for the webapp -- default as shown below
+  # config.webxml.rails.env = ENV['RAILS_ENV'] || 'production'
+
+  #config.webxml.jruby.runtime.env = "DATABASE_URL=mysql://11.1.1.11/mydb\n" <<
+  #      'PATH=/home/tomcat/bin:/usr/local/bin:/opt/bin,HOME="/home/tomcat"'
+end
+```
+
 If you're deploying a Rails application on JRuby it's highly **recommended** to
 uncomment `config.threadsafe!`. Otherwise, if unsure or you're code is not
 thread-safe yet you'll end up polling several JRuby runtimes in a single process,
-in this case however each worker thread will use (block) an application runtime
-from the pool (consider it while setting
-`jruby.min.runtimes` and `jruby.max.runtimes` parameters).
+in this case however each worker thread will use (and thus block) an application
+runtime from the pool (consider it while setting `jruby.min.runtimes` and
+`jruby.max.runtimes` parameters).
 
 ### Trinidad
 
@@ -249,7 +281,7 @@ Build the gem (includes the .jar packaged) :
 
 ## Copyright
 
-Copyright (c) 2013 [Karol Bucek](https://github.com/kares).
+Copyright (c) 2014 [Karol Bucek](https://github.com/kares).
 See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.
 
 [0]: https://secure.travis-ci.org/kares/jruby-rack-worker.png
