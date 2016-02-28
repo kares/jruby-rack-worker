@@ -148,7 +148,9 @@ task :gem => [ :jar ] do
       spec.has_rdoc = false
       spec.rubyforge_project = '[none]'
     end
-    Gem::Builder.new(gem_spec).build
+    defined?(Gem::Builder) ? Gem::Builder.new(gem_spec).build : begin
+      require 'rubygems/package'; Gem::Package.build(gem_spec)
+    end
     File.open(gemspec_file, 'w') { |f| f << gem_spec.to_ruby }
     mv FileList['*.gem'], '..'
   end
