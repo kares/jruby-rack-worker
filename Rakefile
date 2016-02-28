@@ -137,13 +137,13 @@ task :gem => [ :jar ] do
       spec.description =
         "Implements a thread based worker pattern on top of JRuby-Rack. " +
         "Useful if you'd like to run background workers within your (deployed) " +
-        "web-application (concurrently in 'native' threads) instead of using " +
+        "web-application, concurrently in 'native' threads, instead of using " +
         "separate daemon processes. " +
         "Provides (thread-safe) implementations for popular worker libraries " +
         "such as Resque and Delayed::Job, but one can easily write their own " +
-        "'daemon' scripts as well."
+        "'daemon' work processing loop as well."
 
-      spec.add_dependency 'jruby-rack', ">= 1.1.10"
+      spec.add_dependency 'jruby-rack', "~> 1.1.10"
       spec.files = FileList["./**/*"].exclude("*.gem").map{ |f| f.sub(/^\.\//, '') }
       spec.has_rdoc = false
       spec.rubyforge_project = '[none]'
