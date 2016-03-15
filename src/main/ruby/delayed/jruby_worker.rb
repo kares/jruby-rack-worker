@@ -8,7 +8,50 @@ module Delayed
   # - no daemons dependency + thread-safe
   # @see #start_worker.rb
   class JRubyWorker < Worker
-    
+
+    THREAD_LOCAL_ACCESSORS = [
+      :min_priority, :max_priority, :sleep_delay, :read_ahead, :queues, :exit_on_complete
+    ]
+    private_constant :THREAD_LOCAL_ACCESSORS if respond_to?(:private_constant)
+    # due Delayed::Worker#initialize(options = {}) :
+    #
+    # [:min_priority, :max_priority, :sleep_delay, :read_ahead, :queues, :exit_on_complete].each do |option|
+    #   self.class.send("#{option}=", options[option]) if options.key?(option)
+    # end
+
+    class Config
+      attr_accessor *THREAD_LOCAL_ACCESSORS
+      def key?(name); ! instance_variable_get(:"@#{name}").nil? end
+    end
+
+    THREAD_LOCAL_ACCESSORS.each do |name|
+      class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+        def self.#{name}=(val)
+          (Thread.current[:delayed_jruby_worker_config] ||= Config.new).#{name} = val
+        end
+        def self.#{name}
+          if (config = Thread.current[:delayed_jruby_worker_config]) && config.key?(:#{name})
+            config.#{name}
+          else
+            Worker.#{name}
+          end
+        end
+      EOS
+    end
+    # e.g. :
+    #
+    #  def self.min_priority=(value)
+    #    (Thread.current[:delayed_jruby_worker_config] ||= Config.new).min_priority = value
+    #  end
+    #
+    #  def self.min_priority
+    #    if (config = Thread.current[:delayed_jruby_worker_config]) && config.key?(:min_priority)
+    #      config.min_priority
+    #    else
+    #      Worker.min_priority
+    #    end
+    #  end
+
     def name
       if @name.nil?
         # super - [prefix]host:hostname pid:process_pid
@@ -20,9 +63,9 @@ module Delayed
       end
       @name
     end
-    
+
     def to_s; name; end
-    
+
     def thread_id
       # NOTE: JRuby might set a bit long name for Thread.new { ... } code e.g.
       # RubyThread-1: /home/[...]/src/test/ruby/delayed/jruby_worker_test.rb:163
@@ -43,16 +86,16 @@ module Delayed
         Delayed::Job.clear_locks!(name)
       end
     end
-    
+
     unless defined? Delayed::Lifecycle # DJ 2.x (< 3.0)
       require 'benchmark'
       # in case DJ 2.1 loads AS 3.x we're need `[1,2].sum` :
       require 'active_support/core_ext/enumerable' rescue nil
-      
+
       def start
         say "Starting job worker"
         trap
-        
+
         loop do
           result = nil
 
@@ -73,19 +116,19 @@ module Delayed
           break if @exit
         end
       end
-      
+
       def stop?; !!@exit; end
       def stop; @exit = true; end
-      
+
     end
-    
+
     protected
-    
+
     def trap(name = nil)
       # catch invocations from #start traps TERM and INT
       at_exit { exit! } if ! name || name.to_s == 'TERM'
     end
-    
+
   end
 
 end

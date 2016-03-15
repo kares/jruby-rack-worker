@@ -123,6 +123,53 @@ module Delayed
       worker.start
     end
 
+    test "replaces class options with thread-local ones" do
+      worker = nil; failure = nil; lock = java.lang.Object.new
+      thread = java.lang.Thread.new do
+        begin
+          worker = new_worker :sleep_delay => 11, :exit_on_complete => false
+          assert_equal 11, worker.class.sleep_delay
+          assert_equal false, worker.class.exit_on_complete
+
+          assert_equal 5, Delayed::Worker.sleep_delay
+          assert_equal true, Delayed::Worker.delay_jobs
+          assert_equal nil, Delayed::Worker.exit_on_complete
+
+          assert_equal true, worker.class.delay_jobs
+          assert_equal 25, worker.class.max_attempts
+
+          assert_equal 11, worker.class.sleep_delay
+          assert_equal false, worker.class.exit_on_complete
+
+          worker = new_worker :exit_on_complete => true
+          assert_equal 11, worker.class.sleep_delay
+          assert_equal true, worker.class.exit_on_complete
+
+          assert_equal nil, Delayed::Worker.exit_on_complete
+        rescue => e
+          failure = e
+        ensure
+          lock.synchronized { lock.notify }
+        end
+      end
+
+      assert_equal 5, Delayed::Worker.sleep_delay
+      assert_equal true, Delayed::Worker.delay_jobs
+      assert_equal nil, Delayed::Worker.exit_on_complete
+
+      thread.name = 'worker_x'; thread.start
+
+      assert_equal 5, Delayed::Worker.sleep_delay
+      assert_equal nil, Delayed::Worker.exit_on_complete
+
+      lock.synchronized { lock.wait }
+
+      raise failure unless failure.nil?
+
+      assert_equal 5, Delayed::Worker.sleep_delay
+      assert_equal nil, Delayed::Worker.exit_on_complete
+    end
+
     begin
 
       context "with backend" do
