@@ -63,5 +63,5 @@ rescue Resque::NoQueueError => e
   logger = JRuby::Rack::Worker.logger
   logger && logger.error(msg)
 rescue => e
-  JRuby::Rack::Worker.log_error(e) || raise
+  JRuby::Rack::Worker.log_error(e) || raise(e)
 end
