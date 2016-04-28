@@ -53,7 +53,7 @@ module Delayed
     #  end
 
     def name
-      if @name.nil?
+      if (@name ||= nil).nil?
         # super - [prefix]host:hostname pid:process_pid
         begin
           @name = "#{super} thread:#{thread_id}".freeze
