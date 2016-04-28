@@ -33,7 +33,7 @@ module Delayed
           if (config = Thread.current[:delayed_jruby_worker_config]) && config.key?(:#{name})
             config.#{name}
           else
-            Worker.#{name}
+            superclass.#{name}
           end
         end
       EOS
