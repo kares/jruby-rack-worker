@@ -179,9 +179,25 @@ namespace :test do
   desc "run ruby tests"
   task :ruby do # => :'bundler:setup'
     Rake::Task['jar'].invoke unless File.exists?(out_jar_path)
-    test = ENV['TEST'] || File.join("src/test/ruby/**/*_test.rb")
+    _ruby_test('src/test/ruby/**/*_test.rb')
+  end
+
+  desc "run DJ (ruby) tests only"
+  task 'ruby:delayed' do # => :'bundler:setup'
+    Rake::Task['jar'].invoke unless File.exists?(out_jar_path)
+    _ruby_test('src/test/ruby/delayed/**/*_test.rb')
+  end
+
+  desc "run Resque (ruby) tests only"
+  task 'ruby:resque' do # => :'bundler:setup'
+    Rake::Task['jar'].invoke unless File.exists?(out_jar_path)
+    _ruby_test('src/test/ruby/resque/**/*_test.rb')
+  end
+
+  def _ruby_test(test_files)
+    test_files = ENV['TEST'] || File.join(test_files)
     #test_opts = (ENV['TESTOPTS'] || '').split(' ')
-    test_files = FileList[test].map { |path| path.sub('src/test/ruby/', '') }
+    test_files = FileList[test_files].map { |path| path.sub('src/test/ruby/', '') }
     ruby "-Isrc/main/ruby:src/test/ruby", "-e #{test_files.inspect}.each { |test| require test }"
   end
 
