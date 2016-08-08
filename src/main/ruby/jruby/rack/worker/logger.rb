@@ -5,16 +5,20 @@ module JRuby
       def self.log_error(e, logger = nil)
         return unless ( logger ||= self.logger )
 
-        message =  "\n#{e.class} (#{e.message}):\n"
-        message << '  ' << e.backtrace.join("\n  ")
-        logger.error("#{message}\n\n")
+        message = "#{e.message} (#{e.class})"
+        if backtrace = e.backtrace
+          message << ":\n  #{backtrace.join("\n  ")}"
+        end
+        logger.error(message)
       end
 
       @@logger = nil
       def self.logger
         @@logger ||= begin
-          if defined?(Rails.logger)
+          if defined? Rails.logger # NOTE: move out
             Rails.logger
+          elsif defined? JRuby::Rack.logger
+            JRuby::Rack.logger
           else
             default_logger
           end
@@ -30,7 +34,7 @@ module JRuby
         end
       end
 
-      def self.logger?; !!@@logger; end
+      def self.logger?; @@logger end
 
       protected
 
