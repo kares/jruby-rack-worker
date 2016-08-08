@@ -41,7 +41,8 @@ public class WorkerContextListener implements ServletContextListener {
      * @param event
      */
     public void contextDestroyed(final ServletContextEvent event) {
-        getWorkerManager( event.getServletContext() ).shutdown();
+        final WorkerManager workerManager = this.workerManager;
+        if (workerManager != null) workerManager.shutdown();
     }
 
     private WorkerManager getWorkerManager(final ServletContext context) {
