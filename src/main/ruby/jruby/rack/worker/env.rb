@@ -1,7 +1,9 @@
 module JRuby
   module Rack
     module Worker
-      
+
+      def self.manager; $worker_manager; end
+
       ENV = Hash.new do |hash, key|
         if hash.key? key = key.to_s
           hash[key]
@@ -12,9 +14,7 @@ module JRuby
           hash[key] = val
         end
       end
-      
-      def self.manager; $worker_manager; end
-      
+
     end
   end
 end
