@@ -34,9 +34,9 @@ import org.jruby.javasupport.JavaEmbedUtils;
 
 /**
  * Manages JRuby worker threads.
- * 
+ *
  * Requires {@link #getRuntime()} to be implemented.
- * 
+ *
  * @author kares <self_AT_kares_DOT_org>
  */
 public abstract class WorkerManager {
@@ -86,7 +86,12 @@ public abstract class WorkerManager {
      * between 1 - 10.
      */
     public static final String THREAD_PRIORITY_KEY = "jruby.worker.thread.priority";
-    
+
+    /**
+     * <b></>-Djruby.worker.skip=true</b> will skip worker startup.
+     */
+    public static final String SKIP_KEY = "jruby.worker.skip";
+
     /**
      * By default a WorkerManager instance is exported with it's Ruby runtime.
      * This is very useful to resolve configuration keys per runtime the same
@@ -95,15 +100,19 @@ public abstract class WorkerManager {
      */
     protected static final String EXPORTED_NAME = "worker_manager";
     private static final String GLOBAL_VAR_NAME = '$' + EXPORTED_NAME;
-    
+
     private boolean exported = true;
-    
+
     protected final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(4);
-    
+
     /**
      * Startup all workers.
      */
     public void startup() {
+        if ( isSkipStartup() ) {
+            log("[" + getClass().getName() + "] startup skipped"); return;
+        }
+
         final String[] workerScript = getWorkerScript(); // [ script, fileName ]
 
         if ( workerScript == null ) {
@@ -114,7 +123,7 @@ public abstract class WorkerManager {
         }
 
         final int workersCount = getThreadCount();
-        
+
         final ThreadFactory threadFactory = newThreadFactory();
         for ( int i = 0; i < workersCount; i++ ) {
             final Ruby runtime;
@@ -125,7 +134,7 @@ public abstract class WorkerManager {
                 log("[" + getClass().getName() + "] failed to obtain (Ruby) runtime");
                 break;
             }
-            
+
             if ( isExported() ) {
                 runtime.getGlobalVariables().set(GLOBAL_VAR_NAME, JavaEmbedUtils.javaToRuby(runtime, this));
             }
@@ -178,22 +187,22 @@ public abstract class WorkerManager {
         } */
         log("[" + getClass().getName() + "] stopped " + workers.size() + " worker(s)");
     }
-    
+
     /**
-     * This shall be implemented by concrete classes and should return an 
+     * This shall be implemented by concrete classes and should return an
      * (initialized) JRuby runtime ready to be used by a worker.
-     * 
-     * By default this method is expected to be called as many times as the 
+     *
+     * By default this method is expected to be called as many times as the
      * configured worker count, thus shall return the same runtime only if
      * it's thread-safe !
      * @return a Ruby runtime
      */
     protected abstract Ruby getRuntime() ;
-    
+
     // ----------------------------------------
-    // properties 
+    // properties
     // ----------------------------------------
-    
+
     private String threadPrefix;
 
     public String getThreadPrefix() {
@@ -203,9 +212,9 @@ public abstract class WorkerManager {
     public void setThreadPrefix(String threadPrefix) {
         this.threadPrefix = threadPrefix;
     }
-    
+
     private Integer threadCount;
-    
+
     public Integer getThreadCount() {
         if (threadCount == null) {
             String count = getParameter(THREAD_COUNT_KEY);
@@ -226,9 +235,9 @@ public abstract class WorkerManager {
     public void setThreadCount(Integer threadCount) {
         this.threadCount = threadCount;
     }
-    
+
     private Integer threadPriority;
-    
+
     public Integer getThreadPriority() {
         if (threadPriority == null) {
             String priority = getParameter(THREAD_PRIORITY_KEY);
@@ -256,7 +265,7 @@ public abstract class WorkerManager {
     public void setThreadPriority(Integer threadPriority) {
         this.threadPriority = threadPriority;
     }
-    
+
     /**
      * Get the worker script/file to execute.
      * @param context
@@ -302,7 +311,7 @@ public abstract class WorkerManager {
                 while ((c = reader.read()) != -1) {
                     content.append((char) c);
                 }
-                
+
                 script = content.toString();
             }
         }
@@ -313,7 +322,7 @@ public abstract class WorkerManager {
 
         return new String[] { script, scriptPath }; // one of these is != null
     }
-    
+
     public Map<String, String> getAvailableWorkers() {
         return new HashMap<String, String>() {
 
@@ -325,6 +334,10 @@ public abstract class WorkerManager {
             }
 
         };
+    }
+
+    protected boolean isSkipStartup() {
+        return Boolean.parseBoolean(getParameter(SKIP_KEY));
     }
 
     /**
@@ -342,11 +355,11 @@ public abstract class WorkerManager {
     public void setExported(final boolean exported) {
         this.exported = exported;
     }
-    
+
     // ----------------------------------------
     // overridables
     // ----------------------------------------
-    
+
     protected RubyWorker newRubyWorker(final Ruby runtime, final String script, final String fileName) {
         return new RubyWorker(runtime, script, fileName);
     }
@@ -354,7 +367,7 @@ public abstract class WorkerManager {
     protected ThreadFactory newThreadFactory() {
         return new WorkerThreadFactory( getThreadPrefix(), getThreadPriority() );
     }
-    
+
     public String getParameter(final String key) {
         return System.getProperty(key);
     }
@@ -365,13 +378,13 @@ public abstract class WorkerManager {
         }
         catch (MalformedURLException e) {
             final File file = new File(path);
-            if ( file.exists() && file.isFile() ) { 
+            if ( file.exists() && file.isFile() ) {
                 return new FileInputStream(file);
             }
         }
         return null;
     }
-    
+
     protected void log(final String message) {
         System.out.println(message);
     }
@@ -380,5 +393,5 @@ public abstract class WorkerManager {
         System.err.println(message);
         e.printStackTrace(System.err);
     }
-    
+
 }
