@@ -125,27 +125,28 @@ module Delayed
 
     test "replaces class options with thread-local ones" do
       worker = nil; failure = nil; lock = java.lang.Object.new
+      exit_on_cmplt = Delayed::Worker.respond_to?(:exit_on_complete)
       thread = java.lang.Thread.new do
         begin
           worker = new_worker :sleep_delay => 11, :exit_on_complete => false
           assert_equal 11, worker.class.sleep_delay
-          assert_equal false, worker.class.exit_on_complete
+          assert_equal false, worker.class.exit_on_complete if exit_on_cmplt
 
           assert_equal 5, Delayed::Worker.sleep_delay
           assert_equal true, Delayed::Worker.delay_jobs
-          assert_equal nil, Delayed::Worker.exit_on_complete
+          assert_equal nil, Delayed::Worker.exit_on_complete if exit_on_cmplt
 
           assert_equal true, worker.class.delay_jobs
           assert_equal 25, worker.class.max_attempts
 
           assert_equal 11, worker.class.sleep_delay
-          assert_equal false, worker.class.exit_on_complete
+          assert_equal false, worker.class.exit_on_complete if exit_on_cmplt
 
           worker = new_worker :exit_on_complete => true
           assert_equal 11, worker.class.sleep_delay
-          assert_equal true, worker.class.exit_on_complete
+          assert_equal true, worker.class.exit_on_complete if exit_on_cmplt
 
-          assert_equal nil, Delayed::Worker.exit_on_complete
+          assert_equal nil, Delayed::Worker.exit_on_complete if exit_on_cmplt
         rescue => e
           failure = e
         ensure
@@ -155,19 +156,19 @@ module Delayed
 
       assert_equal 5, Delayed::Worker.sleep_delay
       assert_equal true, Delayed::Worker.delay_jobs
-      assert_equal nil, Delayed::Worker.exit_on_complete
+      assert_equal nil, Delayed::Worker.exit_on_complete if exit_on_cmplt
 
       thread.name = 'worker_x'; thread.start
 
       assert_equal 5, Delayed::Worker.sleep_delay
-      assert_equal nil, Delayed::Worker.exit_on_complete
+      assert_equal nil, Delayed::Worker.exit_on_complete if exit_on_cmplt
 
       lock.synchronized { lock.wait }
 
       raise failure unless failure.nil?
 
       assert_equal 5, Delayed::Worker.sleep_delay
-      assert_equal nil, Delayed::Worker.exit_on_complete
+      assert_equal nil, Delayed::Worker.exit_on_complete if exit_on_cmplt
     end
 
     begin
