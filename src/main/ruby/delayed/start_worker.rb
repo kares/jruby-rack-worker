@@ -1,7 +1,8 @@
-require 'jruby/rack/worker/logger'
-require 'jruby/rack/worker/env'
-env = JRuby::Rack::Worker::ENV
 begin
+  require 'jruby/rack/worker/logger'
+  require 'jruby/rack/worker/env'
+  env = JRuby::Rack::Worker::ENV
+
   require 'delayed/jruby_worker'
   options = { :quiet => true }
   options[:queues] = (env['QUEUES'] || env['QUEUE'] || '').split(',')
@@ -16,6 +17,14 @@ begin
   end
   worker = Delayed::JRubyWorker.new(options)
   worker.start
-rescue => e
-  JRuby::Rack::Worker.log_error(e) || raise(e)
+rescue Exception => e
+  if defined? JRuby::Rack::Worker.log_error
+    JRuby::Rack::Worker.log_error(e)
+  else
+    msg = e.inspect.dup
+    if backtrace = e.backtrace
+      msg << ":\n  #{backtrace.join("\n  ")}"
+    end
+    STDERR.puts(msg) || true
+  end || raise(e)
 end

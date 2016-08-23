@@ -1,7 +1,8 @@
-require 'jruby/rack/worker/logger'
-require 'jruby/rack/worker/env'
-env = JRuby::Rack::Worker::ENV
 begin
+  require 'jruby/rack/worker/logger'
+  require 'jruby/rack/worker/env'
+  env = JRuby::Rack::Worker::ENV
+
   require 'resque/jruby_worker'
 
   queues = (env['QUEUES'] || env['QUEUE'] || '*').to_s.split(',')
@@ -62,6 +63,14 @@ rescue Resque::NoQueueError => e
   "</context-param>\n"
   logger = JRuby::Rack::Worker.logger
   logger && logger.error(msg)
-rescue => e
-  JRuby::Rack::Worker.log_error(e) || raise(e)
+rescue Exception => e
+  if defined? JRuby::Rack::Worker.log_error
+    JRuby::Rack::Worker.log_error(e)
+  else
+    msg = e.inspect.dup
+    if backtrace = e.backtrace
+      msg << ":\n  #{backtrace.join("\n  ")}"
+    end
+    STDERR.puts(msg) || true
+  end || raise(e)
 end
