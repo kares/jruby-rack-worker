@@ -104,6 +104,9 @@ default a single worker thread is started with the default NORM priority) :
   and you do care about requests more than about executing worker code you might
   consider decreasing the priority (by 1).
 
+One can also skip worker startup (no workers will boot despite the configuration)
+using a parameter e.g. as a Java system property: *-Djruby.worker.skip=true*.
+
 ### Warbler
 
 If you're using [Warbler](http://github.com/jruby/warbler) to assemble your
@@ -197,10 +200,9 @@ end
 
 If you're deploying a Rails application on JRuby it's highly **recommended** to
 uncomment `config.threadsafe!`. Otherwise, if unsure or you're code is not
-thread-safe yet you'll end up polling several JRuby runtimes in a single process,
-in this case however each worker thread will use (and thus block) an application
-runtime from the pool (consider it while setting `jruby.min.runtimes` and
-`jruby.max.runtimes` parameters).
+thread-safe (yet), you'll end up polling several JRuby runtimes in a single process,
+in this case however each worker thread will use and block an application runtime
+from the pool (consider it while setting `jruby.min.runtimes` and `jruby.max.runtimes`).
 
 ### Trinidad
 
@@ -281,7 +283,7 @@ Build the gem (includes the .jar packaged) :
 
 ## Copyright
 
-Copyright (c) 2014 [Karol Bucek](https://github.com/kares).
+Copyright (c) 2016 [Karol Bucek](https://github.com/kares).
 See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.
 
 [0]: https://secure.travis-ci.org/kares/jruby-rack-worker.png
