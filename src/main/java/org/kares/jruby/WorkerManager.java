@@ -99,11 +99,11 @@ public abstract class WorkerManager {
      * check-out <code>jruby/rack/worker/env.rb</code>
      */
     protected static final String EXPORTED_NAME = "worker_manager";
-    private static final String GLOBAL_VAR_NAME = '$' + EXPORTED_NAME;
+    private static final String GLOBAL_VAR_NAME = "$" + EXPORTED_NAME;
 
     private boolean exported = true;
 
-    protected final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(4);
+    protected final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(4, 1);
 
     /**
      * Startup all workers.
@@ -165,8 +165,6 @@ public abstract class WorkerManager {
             final Thread workerThread = workers.get(worker);
             try {
                 worker.stop();
-                // JRuby seems to ignore Java's interrupt arithmentic
-                // @see http://jira.codehaus.org/browse/JRUBY-4135
                 workerThread.interrupt();
                 workerThread.join(1000);
             }
@@ -224,8 +222,7 @@ public abstract class WorkerManager {
                 }
             }
             catch (NumberFormatException e) {
-                log("[" + getClass().getName() + "] " +
-                    "could not parse " + THREAD_COUNT_KEY + " parameter value = " + count, e);
+                log("[" + getClass().getName() + "] could not parse " + THREAD_COUNT_KEY + " parameter value = " + count, e);
             }
             threadCount = 1;
         }
@@ -245,9 +242,9 @@ public abstract class WorkerManager {
                 if ( priority != null ) {
                     if ( "NORM".equalsIgnoreCase(priority) )
                         return threadPriority = Thread.NORM_PRIORITY;
-                    else if ( "MIN".equalsIgnoreCase(priority) )
+                    if ( "MIN".equalsIgnoreCase(priority) )
                         return threadPriority = Thread.MIN_PRIORITY;
-                    else if ( "MAX".equalsIgnoreCase(priority) )
+                    if ( "MAX".equalsIgnoreCase(priority) )
                         return threadPriority = Thread.MAX_PRIORITY;
                     return threadPriority = Integer.parseInt(priority);
                 }
