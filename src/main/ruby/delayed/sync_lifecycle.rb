@@ -1,4 +1,4 @@
-require 'monitor'
+require 'thread'
 
 module Delayed
   module SyncLifecycle
@@ -21,7 +21,7 @@ module Delayed
       end
     end
 
-    MUTEX = Monitor.new
+    MUTEX = Mutex.new
     private_constant :MUTEX if respond_to?(:private_constant)
 
     def synchronize(&block)
