@@ -4,6 +4,8 @@ module Delayed
   module SyncLifecycle
 
     def self.extended(base)
+      return unless Delayed.const_defined? :Lifecycle
+
       klass = base.singleton_class
       klass.send :alias_method, :setup_lifecycle_impl, :setup_lifecycle
       klass.send :alias_method, :setup_lifecycle, :setup_lifecycle_sync
