@@ -92,7 +92,7 @@ module Delayed
       return if @exit # #stop?
       say "Stoping job worker"
       @exit = true # #stop
-      if defined?(Delayed::Job) && Delayed::Job.respond_to?(:clear_locks!)
+      if Delayed.const_defined?(:Job) && Delayed::Job.respond_to?(:clear_locks!)
         Delayed::Job.clear_locks!(name)
       end
     end
@@ -145,12 +145,12 @@ end
 
 Dir.chdir( Rails.root ) if defined?(Rails.root) && Dir.getwd.to_s != Rails.root.to_s
 
-if ! Delayed::Worker.backend && ! defined? Delayed::Lifecycle
+if ! Delayed::Worker.backend && ! Delayed.const_defined?(:Lifecycle)
   Delayed::Worker.guess_backend # deprecated on DJ since 3.0
 end
 
 # NOTE: no explicit logger configuration - DJ logger defaults to Rails.logger
-# if this is not desired - e.g. one once script/delayed_job's logger behavior
+# if this is not desired - e.g. one wants script/delayed_job's logger behavior
 # it's more correct to configure in an initializer rather then forcing the use
 # of delayed_job.log (like Delayed::Command does) ...
 #Delayed::Worker.logger = Logger.new(File.join(Rails.root, 'log', 'delayed_job.log'))
