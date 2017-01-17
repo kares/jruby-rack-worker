@@ -40,7 +40,7 @@ module JRuby
       def self.base_dir
         File.expand_path('../../..', File.dirname(__FILE__))
       end
-      
+
     end
   end
 end
