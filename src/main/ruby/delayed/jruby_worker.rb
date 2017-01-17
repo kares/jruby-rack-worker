@@ -9,6 +9,16 @@ module Delayed
   # @see #start_worker.rb
   class JRubyWorker < Worker
 
+    require 'delayed/sync_lifecycle'
+    # @patch make sure concurrent worker threads do not cause multiple initializations
+    Worker.extend SyncLifecycle
+
+    # @override to return the same as Delayed::Worker.lifecycle (uses class instance state)
+    def self.lifecycle; Worker.lifecycle end
+
+    # @override since `initialize` does: `self.class.setup_lifecycle`
+    def self.setup_lifecycle; Worker.setup_lifecycle end
+
     THREAD_LOCAL_ACCESSORS = [
       :min_priority, :max_priority, :sleep_delay, :read_ahead, :queues, :exit_on_complete
     ]
