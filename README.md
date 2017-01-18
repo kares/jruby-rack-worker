@@ -283,7 +283,7 @@ Build the gem (includes the .jar packaged) :
 
 ## Copyright
 
-Copyright (c) 2016 [Karol Bucek](https://github.com/kares).
+Copyright (c) 2017 [Karol Bucek](https://github.com/kares).
 See LICENSE (http://www.apache.org/licenses/LICENSE-2.0) for details.
 
 [0]: https://secure.travis-ci.org/kares/jruby-rack-worker.png
