@@ -39,6 +39,7 @@ module Delayed
     test "loops on start" do
       worker = new_worker
       worker.expects(:loop).once
+      stub_Delayed_Job
       worker.start
     end
 
@@ -46,6 +47,7 @@ module Delayed
       worker = new_worker
       worker.expects(:trap).at_least_once
       worker.stubs(:loop)
+      stub_Delayed_Job
       worker.start
 
       assert_equal worker.class, new_worker.method(:trap).owner
@@ -55,6 +57,7 @@ module Delayed
       worker = new_worker
       worker.stubs(:loop)
       worker.expects(:at_exit).once
+      stub_Delayed_Job
       worker.start
     end
 
@@ -68,10 +71,12 @@ module Delayed
       end
       worker.stubs(:loop)
 
+      job_class = stub_Delayed_Job(:mock) # Delayed::Job
+      job_class.expects(:clear_locks!).with(worker.name).at_least_once
+
       worker.start
       assert ! worker.stop?
-      job_class = stub_Delayed_Job # Delayed::Job
-      job_class.expects(:clear_locks!).with(worker.name)
+
       worker.call_at_exit
       assert_true worker.stop?
     end
@@ -182,6 +187,7 @@ module Delayed
           #class Delayed::Job < ActiveRecord::Base; end
           begin
             require 'delayed_job_active_record' # DJ 3.0+
+            Delayed::Job.reset_column_information
           rescue LoadError
             Delayed::Worker.backend = :active_record
           end
@@ -190,7 +196,7 @@ module Delayed
         setup do
           Delayed::Worker.logger = Logger.new(STDOUT)
           Delayed::Worker.logger.level = Logger::DEBUG
-          #ActiveRecord::Base.logger = Delayed::Worker.logger
+          ActiveRecord::Base.logger = Delayed::Worker.logger if $VERBOSE
           #ActiveRecord::Base.class_eval do
           #  def self.silence; yield; end # disable silence
           #end
@@ -236,15 +242,19 @@ module Delayed
       Delayed::JRubyWorker.new options
     end
 
-    def stub_Delayed_Job
-      Delayed.const_set :Job, const = mock('Delayed::Job')
+    def stub_Delayed_Job(mock = false)
+      Delayed.const_set :JobReal, Delayed::Job if Delayed.const_defined?(:Job)
+      Delayed.const_set :Job, const = ( mock ? mock('Delayed::Job') : stub(:clear_locks! => nil) )
       const
     end
 
     teardown do
-      if defined?(Delayed::Job) && defined?(Mocha) &&
-          Delayed::Job.is_a?(Mocha::Mock)
+      if defined?(Delayed::Job) && defined?(Mocha) && Delayed::Job.is_a?(Mocha::Mock)
         Delayed.send(:remove_const, :Job)
+        if Delayed.const_defined?(:JobReal)
+          Delayed.const_set :Job, Delayed::JobReal
+          Delayed.send(:remove_const, :JobReal)
+        end
       end
     end
 

@@ -65,6 +65,7 @@ module Delayed
         require 'active_record'
         require 'active_record/connection_adapters/jdbcsqlite3_adapter'
         load 'delayed/active_record_schema_cron.rb'
+        Delayed::Job.reset_column_information
 
         load_plugin!
       end
@@ -72,7 +73,7 @@ module Delayed
       setup do
         Delayed::Worker.logger = Logger.new(STDOUT)
         Delayed::Worker.logger.level = Logger::DEBUG
-        ActiveRecord::Base.logger = Delayed::Worker.logger
+        ActiveRecord::Base.logger = Delayed::Worker.logger if $VERBOSE
       end
 
       class CronJob
@@ -131,18 +132,6 @@ module Delayed
         end
       end
       threads
-    end
-
-    def stub_Delayed_Job
-      Delayed.const_set :Job, const = mock('Delayed::Job')
-      const
-    end
-
-    teardown do
-      if defined?(Delayed::Job) && defined?(Mocha) &&
-          Delayed::Job.is_a?(Mocha::Mock)
-        Delayed.send(:remove_const, :Job)
-      end
     end
 
   end
