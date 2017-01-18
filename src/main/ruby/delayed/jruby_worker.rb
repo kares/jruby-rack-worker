@@ -9,6 +9,9 @@ module Delayed
   # @see #start_worker.rb
   class JRubyWorker < Worker
 
+    require 'delayed/sleep_calculator'
+    include SleepCalculator
+
     require 'delayed/sync_lifecycle'
     # @patch make sure concurrent worker threads do not cause multiple initializations
     Worker.extend SyncLifecycle
