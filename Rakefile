@@ -107,6 +107,9 @@ end
 
 desc "build gem"
 task :gem => [ :jar ] do
+  warn "building using JRuby: #{JRUBY_VERSION}" if JRUBY_VERSION > '9.0'
+  raise "building on Java > 7" if ENV_JAVA['java.specification.version'] > '1.7'
+
   mkdir_p gem_out = File.join(OUT_DIR, 'gem')
   mkdir_p gem_out_lib = File.join(gem_out, 'lib')
 
