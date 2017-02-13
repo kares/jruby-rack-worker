@@ -14,7 +14,7 @@ module Delayed
 
     require 'delayed/sync_lifecycle'
     # @patch make sure concurrent worker threads do not cause multiple initializations
-    Worker.extend SyncLifecycle
+    Worker.extend SyncLifecycle if Delayed.const_defined? :Lifecycle
 
     # @override to return the same as Delayed::Worker.lifecycle (uses class instance state)
     def self.lifecycle; Worker.lifecycle end

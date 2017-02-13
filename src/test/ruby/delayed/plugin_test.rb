@@ -38,7 +38,7 @@ module Delayed
       ensure
         Delayed::Worker.reset # @lifecycle = nil
       end
-    end
+    end if Worker.is_a?(SyncLifecycle)
 
 
     test "setup lifecycle does guard for lifecycle creation" do
@@ -57,7 +57,7 @@ module Delayed
       ensure
         Delayed::Worker.reset # @lifecycle = nil
       end
-    end
+    end if Worker.is_a?(SyncLifecycle)
 
     context "with backend" do
 
