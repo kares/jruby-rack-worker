@@ -12,15 +12,28 @@ module Delayed
     require 'delayed/sleep_calculator'
     include SleepCalculator
 
-    require 'delayed/sync_lifecycle'
-    # @patch make sure concurrent worker threads do not cause multiple initializations
-    Worker.extend SyncLifecycle if Delayed.const_defined? :Lifecycle
-
     # @override to return the same as Delayed::Worker.lifecycle (uses class instance state)
     def self.lifecycle; Worker.lifecycle end
 
-    # @override since `initialize` does: `self.class.setup_lifecycle`
+    # @override since `initialize` (DJ 4.1) does: `self.class.setup_lifecycle`
     def self.setup_lifecycle; Worker.setup_lifecycle end
+
+    unless defined? Worker.setup_lifecycle
+      # adapt DJ 3.0/4.0 :
+      # def self.lifecycle
+      #   @lifecycle ||= Delayed::Lifecycle.new
+      # end
+      def Worker.lifecycle
+        @lifecycle ||= setup_lifecycle
+      end
+      def Worker.setup_lifecycle
+        @lifecycle = Delayed::Lifecycle.new
+      end
+    end
+
+    require 'delayed/sync_lifecycle'
+    # @patch make sure concurrent worker threads do not cause multiple initializations
+    Worker.extend SyncLifecycle if Delayed.const_defined? :Lifecycle
 
     THREAD_LOCAL_ACCESSORS = [
       :min_priority, :max_priority, :sleep_delay, :read_ahead, :queues, :exit_on_complete

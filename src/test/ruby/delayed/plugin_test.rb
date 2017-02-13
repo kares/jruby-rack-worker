@@ -9,12 +9,16 @@ module Delayed
     end
 
     def self.load_plugin!
+      load_plugin_like!
+      require 'delayed_cron_job' # order is important - backend needs to be loaded
+      # gem: spec.add_dependency "delayed_job", ">= 4.1"
+    end
+
+    def self.load_plugin_like!
       require 'active_record'
       require 'active_record/connection_adapters/jdbcsqlite3_adapter'
 
       require 'delayed_job_active_record' # DJ 3.0+
-
-      require 'delayed_cron_job' # order is important - backend needs to be loaded
     end
 
     setup do
@@ -23,12 +27,12 @@ module Delayed
     end
 
     test "only one lifecycle instance is created" do
-      self.class.load_plugin!
+      self.class.load_plugin_like!
 
       lifecycle = Delayed::Lifecycle.new
       Delayed::Lifecycle.expects(:new).returns(lifecycle).once
       begin
-        Delayed::Worker.reset # @lifecycle = nil
+        reset_worker
         threads = start_threads(3) do
           l1 = Delayed::JRubyWorker.lifecycle
           l2 = Delayed::Worker.lifecycle
@@ -42,12 +46,12 @@ module Delayed
 
 
     test "setup lifecycle does guard for lifecycle creation" do
-      self.class.load_plugin!
+      self.class.load_plugin_like!
 
       lifecycle = Delayed::Lifecycle.new
       Delayed::Lifecycle.expects(:new).returns(lifecycle).once
       begin
-        Delayed::Worker.reset # @lifecycle = nil
+        reset_worker
         threads = start_threads(5) do
           Delayed::JRubyWorker.new
           sleep 0.1
@@ -61,13 +65,15 @@ module Delayed
 
     context "with backend" do
 
+      @@plugin = nil
+
       def self.startup
         require 'active_record'
         require 'active_record/connection_adapters/jdbcsqlite3_adapter'
         load 'delayed/active_record_schema_cron.rb'
         Delayed::Job.reset_column_information
 
-        load_plugin!
+        @@plugin = begin; load_plugin!; rescue Exception => ex; ex end
       end
 
       setup do
@@ -93,6 +99,8 @@ module Delayed
       end
 
       test "works (integration)" do
+        omit "#{@@plugin.inspect}" if @@plugin.is_a?(Exception) # 'plugin not supported on DJ < 4.1'
+
         worker = Delayed::JRubyWorker.new({ :sleep_delay => 0.10 })
         start = Time.now
         Delayed::Job.enqueue job = CronJob.new(:boo), cron: '0-59/1 * * * *'
@@ -132,6 +140,12 @@ module Delayed
         end
       end
       threads
+    end
+
+    def reset_worker
+      # Worker.reset only does `@lifecycle = nil` on DJ 4.1
+      Delayed::Worker.instance_variable_set :@lifecycle, nil
+      Delayed::Worker.reset
     end
 
   end

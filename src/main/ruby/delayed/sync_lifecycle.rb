@@ -18,6 +18,7 @@ module Delayed
           #@lifecycle = Delayed::Lifecycle.new
           #lifecycle = @lifecycle
         end
+        @lifecycle # make sure returns lifecycle (for DJ < 4.1 compat layer)
       end
     end
 
