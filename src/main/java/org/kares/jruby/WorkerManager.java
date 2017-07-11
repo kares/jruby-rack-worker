@@ -158,11 +158,12 @@ public abstract class WorkerManager {
     public void shutdown() {
         final Map<RubyWorker, Thread> workers = new HashMap<RubyWorker, Thread>(this.workers);
         this.workers.clear();
-        for ( final RubyWorker worker : workers.keySet() ) {
+        for ( Map.Entry<RubyWorker, Thread> ent : workers.entrySet() ) {
+            final RubyWorker worker = ent.getKey();
             if ( isExported() ) {
                 worker.runtime.getGlobalVariables().clear(GLOBAL_VAR_NAME);
             }
-            final Thread workerThread = workers.get(worker);
+            final Thread workerThread = ent.getValue();
             try {
                 worker.stop();
                 workerThread.interrupt();
