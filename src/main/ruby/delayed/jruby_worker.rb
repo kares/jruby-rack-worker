@@ -169,9 +169,4 @@ end
 # if this is not desired - e.g. one wants script/delayed_job's logger behavior
 # it's more correct to configure in an initializer rather then forcing the use
 # of delayed_job.log (like Delayed::Command does) ...
-#Delayed::Worker.logger = Logger.new(File.join(Rails.root, 'log', 'delayed_job.log'))
-
-# NOTE: we skip Delayed::Worker's #before_fork and #after_fork and only execute
-# the backend before/after fork hooks as there is no need to re-open files ...
-Delayed::Worker.backend.before_fork if Delayed::Worker.backend
-Delayed::Worker.backend.after_fork if Delayed::Worker.backend
+# Delayed::Worker.logger = Logger.new(File.join(Rails.root, 'log', 'delayed_job.log'))
