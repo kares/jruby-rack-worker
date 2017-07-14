@@ -496,8 +496,9 @@ module Resque
 
   ( JRubyWorker::RESQUE_2x ? WorkerRegistry : Worker ).class_eval do
     # Returns a single worker object. Accepts a string id.
-    def self.find(worker_id)
-      if exists?(worker_id)
+    def self.find(worker_id, options = nil)
+      skip_exists = options && options[:skip_exists]
+      if skip_exists || exists?(worker_id)
         # NOTE: a pack so that Resque::Worker.find returns
         # correct JRubyWorker class for thread-ed workers:
         host, pid, thread, queues = JRubyWorker.split_id(worker_id)
@@ -509,6 +510,8 @@ module Resque
           worker = Worker.new(*queues_args)
         end
         worker.to_s = worker_id
+        worker.hostname = host if worker.respond_to?(:hostname=)
+        worker.pid = pid.to_i if worker.respond_to?(:pid=)
         worker
       else
         nil
