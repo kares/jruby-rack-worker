@@ -12,7 +12,7 @@ module Delayed
 
       def calc_sleep_time(time)
         count = thread_count rescue nil
-        return time if count && count <= 1 || time <= 0
+        return time if ! count || count <= 1 || time <= 0
 
         last = @@last.get_and_set now = java.lang.System.current_time_millis
         return time if ( now - last ) > time * 1000
