@@ -439,26 +439,29 @@ module Resque
 
     # low-level API probably worth moving out of here :
 
-    if defined?($serlet_context) && $serlet_context
+    CONTEXT ||= defined?($servlet_context) && $servlet_context
+    private_constant :CONTEXT
+
+    if CONTEXT
 
       def self.fetch_global_property(key) # :nodoc
         with_global_lock do
-          return $serlet_context.getAttribute(key)
+          return CONTEXT.getAttribute(key)
         end
       end
 
       def self.store_global_property(key, value) # :nodoc
         with_global_lock do
           if value.nil?
-            $serlet_context.removeAttribute(key)
+            CONTEXT.removeAttribute(key)
           else
-            $serlet_context.setAttribute(key, value)
+            CONTEXT.setAttribute(key, value)
           end
         end
       end
 
       def self.with_global_lock(&block) # :nodoc
-        $serlet_context.synchronized(&block)
+        CONTEXT.synchronized(&block)
       end
 
     else # no $servlet_context assume 1 app within server/JVM (e.g. mizuno)
