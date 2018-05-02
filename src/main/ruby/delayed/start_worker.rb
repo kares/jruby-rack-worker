@@ -5,9 +5,11 @@ begin
 
   require 'delayed/jruby_worker'
   options = { :quiet => true }
-  options[:queues] = (env['QUEUES'] || env['QUEUE'] || '').split(',')
-  options[:min_priority] = env['MIN_PRIORITY']
-  options[:max_priority] = env['MAX_PRIORITY']
+  if queues = ( env['QUEUES'] || env['QUEUE'] )
+    options[:queues] = queues.split(',')
+  end
+  options[:min_priority] = env['MIN_PRIORITY'] if env['MIN_PRIORITY']
+  options[:max_priority] = env['MAX_PRIORITY'] if env['MAX_PRIORITY']
   # beyond `rake delayed:work` compatibility :
   if read_ahead = env['READ_AHEAD'] # DEFAULT_READ_AHEAD = 5
     options[:read_ahead] = read_ahead.to_i
