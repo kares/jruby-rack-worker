@@ -6,7 +6,6 @@ With out of the box thread-safe [JRuby](http://jruby.org) "adapters" for:
 
 * [Resque](http://github.com/defunkt/resque) (>= 1.21.0, ~> 2.0.0 [master])
 * [Delayed::Job](http://github.com/collectiveidea/delayed_job) (~> 2.1, >= 3.0)
-* [Navvy](http://github.com/jeffkreeftmeijer/navvy) (not-maintained)
 
 ... but one can easily write/adapt his own worker loop.
 

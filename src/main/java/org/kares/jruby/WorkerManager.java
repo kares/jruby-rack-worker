@@ -327,7 +327,6 @@ public abstract class WorkerManager {
             {
                 put("delayed_job", "delayed/start_worker.rb");
                 put("delayed", "delayed/start_worker.rb"); // alias
-                put("navvy", "navvy/start_worker.rb");
                 put("resque", "resque/start_worker.rb");
             }
 
