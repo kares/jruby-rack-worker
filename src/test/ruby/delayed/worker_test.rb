@@ -5,7 +5,7 @@ gem_spec = Gem.loaded_specs['delayed_job'] if defined? Gem
 puts "loaded gem 'delayed_job' '#{gem_spec.version.to_s}'" if gem_spec
 
 module Delayed
-  class JRubyWorkerTest < Test::Unit::TestCase
+  class WorkerTest < Test::Unit::TestCase
 
     def self.startup
       JRuby::Rack::Worker.load_jar
@@ -14,12 +14,6 @@ module Delayed
     setup do
       require "logger"; require 'stringio'
       Delayed::Worker.logger = Logger.new(StringIO.new)
-    end
-
-    test "new works with a hash" do
-      assert_nothing_raised do
-        Delayed::JRubyWorker.new({})
-      end
     end
 
     test "name includes thread name" do
@@ -34,31 +28,6 @@ module Delayed
       assert_equal 'foo-bar', worker.name
       worker.name = nil
       assert_match /^host:.*?thread:.*?/, worker.name
-    end
-
-    test "loops on start" do
-      worker = new_worker
-      worker.expects(:loop).once
-      stub_Delayed_Job
-      worker.start
-    end
-
-    test "traps (signals) on start" do
-      worker = new_worker
-      worker.expects(:trap).at_least_once
-      worker.stubs(:loop)
-      stub_Delayed_Job
-      worker.start
-
-      assert_equal worker.class, new_worker.method(:trap).owner
-    end
-
-    test "sets up an at_exit hook on start" do
-      worker = new_worker
-      worker.stubs(:loop)
-      worker.expects(:at_exit).once
-      stub_Delayed_Job
-      worker.start
     end
 
     test "exit worker from at_exist registered hook and clears locks" do
@@ -181,8 +150,8 @@ module Delayed
       context "with backend" do
 
         def self.startup
-          require 'active_record'
-          require 'active_record/connection_adapters/jdbcsqlite3_adapter'
+          load_active_record!
+
           load 'delayed/active_record_schema.rb'
           #class Delayed::Job < ActiveRecord::Base; end
           begin
@@ -237,6 +206,11 @@ module Delayed
     end
 
     private
+
+    def self.load_active_record!
+      require 'active_record'
+      require 'arjdbc' if defined? JRUBY_VERSION
+    end
 
     def new_worker(options = {})
       Delayed::JRubyWorker.new options
