@@ -3,7 +3,19 @@ begin
   require 'jruby/rack/worker/env'
   env = JRuby::Rack::Worker::ENV
 
-  require 'delayed/jruby_worker'
+  begin
+    require 'delayed/threaded'
+  rescue LoadError => e
+    JRuby::Rack::Worker.log_error <<-load_error
+JRuby-Rack-Worker's delayed_job support was externalized, to use it now you need to use : 
+
+gem 'delayed-threaded'
+
+and re-bundle your gem dependencies.
+    load_error
+    raise e
+  end
+
   options = { :quiet => true }
   if queues = ( env['QUEUES'] || env['QUEUE'] )
     options[:queues] = queues.split(',')

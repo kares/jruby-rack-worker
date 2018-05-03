@@ -14,6 +14,7 @@ class ActiveRecord::Base
     t.string   "queue"
     t.datetime "created_at", :null => false
     t.datetime "updated_at", :null => false
+    t.string   "cron" # plugin
   end
 end
 #ActiveRecord::Migration.verbose = false
