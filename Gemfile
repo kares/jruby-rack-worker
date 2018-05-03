@@ -64,8 +64,8 @@ group :resque do
 
   if version = ENV['redis']
     gem 'redis', version, :require => nil
-  else
-    gem 'redis', '< 4', :require => nil # in general, doesn't work with Redis 4.x
+  else # 1.2x doesn't work with Redis 4.x
+    gem 'redis', '~> 3.3', :require => nil if ENV['resque'] != 'master'
   end
 
   gem 'json', :require => false # NOTE: required since resque-1.23.0
