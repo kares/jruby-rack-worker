@@ -17,7 +17,7 @@ services:
 env:
   - resque="master" delayed_job="~>4.1" activerecord="~>4.2.6"
   - resque="~>1.25.2" delayed_job="~>4.0.6" activerecord="~>4.2"
-  - resque="~>1.24.1" delayed_job="~>3.0" # activerecord="~>3.2"
+  - resque="~>1.24.1" delayed_job="~>3.0" activerecord="~>3.2.22"
   - resque="~>1.26.0" delayed_job="~>4.1.2" activerecord="~>4.2"
 allowed_failures:
   - env: resque="~>1.26.0" delayed_job="~>4.1.2" activerecord="~>4.2"
