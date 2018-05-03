@@ -62,7 +62,11 @@ group :resque do
     gem 'resque'
   end
 
-  gem 'redis', '< 4', :require => nil if JRUBY_VERSION < '9.0'
+  if version = ENV['redis']
+    gem 'redis', version, :require => nil
+  else
+    gem 'redis', '< 4', :require => nil # in general, doesn't work with Redis 4.x
+  end
 
   gem 'json', :require => false # NOTE: required since resque-1.23.0
 
