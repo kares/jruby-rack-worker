@@ -2,13 +2,18 @@ module JRuby
   module Rack
     module Worker
 
-      def self.log_error(e, logger = nil)
-        return unless ( logger ||= self.logger )
+      def self.log_error(e, prefix = nil)
+        return unless ( logger = self.logger )
 
-        message = "#{e.message} (#{e.class})"
-        if backtrace = e.backtrace
-          message << ":\n  #{backtrace.join("\n  ")}"
+        if e.is_a?(String)
+          message = "#{prefix}#{e}"
+        else
+          message = "#{prefix}#{e.message} (#{e.class})"
+          if backtrace = e.backtrace
+            message << ":\n  #{backtrace.join("\n  ")}"
+          end
         end
+
         logger.error(message)
       end
 
