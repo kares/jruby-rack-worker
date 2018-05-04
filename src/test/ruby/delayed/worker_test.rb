@@ -12,7 +12,7 @@ module Delayed
     end
 
     setup do
-      require "logger"; require 'stringio'
+      require 'logger'; require 'stringio'
       Delayed::Worker.logger = Logger.new(StringIO.new)
     end
 
@@ -160,15 +160,19 @@ module Delayed
           rescue LoadError
             Delayed::Worker.backend = :active_record
           end
-        end
 
-        setup do
           Delayed::Worker.logger = Logger.new(STDOUT)
           Delayed::Worker.logger.level = Logger::DEBUG
           ActiveRecord::Base.logger = Delayed::Worker.logger if $VERBOSE
-          #ActiveRecord::Base.class_eval do
-          #  def self.silence; yield; end # disable silence
-          #end
+          ActiveRecord::Base.class_eval do
+            def self.silence; yield; end # disable silence
+          end
+
+          @@default_queues = Delayed::Worker.queues
+        end
+
+        setup do
+          Delayed::Worker.queues = @@default_queues
         end
 
         class TestJob
@@ -188,9 +192,9 @@ module Delayed
         end
 
         test "works (integration)" do
-          worker = Delayed::JRubyWorker.new({ :sleep_delay => 0.10 })
+          worker = Delayed::JRubyWorker.new({ :sleep_delay => 0.12 })
           Delayed::Job.enqueue job = TestJob.new(:huu)
-          Thread.new { worker.start }
+          Thread.start { Thread.current.abort_on_exception = true; worker.start }
           sleep(0.20)
           assert ! worker.stop?
 
@@ -199,6 +203,44 @@ module Delayed
           worker.stop
           sleep(0.15)
           assert worker.stop?
+        end
+
+        test "boots (with worker manager)" do
+          servlet_context = mock('servet_context')
+          servlet_context.stubs(:getInitParameter).with('jruby.worker').returns 'delayed'
+          servlet_context.stubs(:getInitParameter).with('jruby.worker.skip').returns nil
+          servlet_context.stubs(:getInitParameter).with('jruby.worker.thread.count').returns nil
+          servlet_context.stubs(:getInitParameter).with('jruby.worker.thread.priority').returns nil
+          #
+          servlet_context.stubs(:getInitParameter).with('MIN_PRIORITY').returns nil
+          servlet_context.stubs(:getInitParameter).with('MAX_PRIORITY').returns nil
+          servlet_context.stubs(:getInitParameter).with('READ_AHEAD').returns nil
+          servlet_context.stubs(:getInitParameter).with('QUEUES').returns nil
+          servlet_context.stubs(:getInitParameter).with('QUEUE').returns 'foo'
+          servlet_context.stubs(:getInitParameter).with('QUIET').returns 'false'
+          servlet_context.stubs(:getInitParameter).with('SLEEP_DELAY').returns '1.5'
+          servlet_context.stubs(:getServletContextName).returns '/context'
+
+          _WorkerManagerImpl = Class.new(org.kares.jruby.rack.DefaultWorkerManager) do
+            def getRuntime; require 'jruby'; JRuby.runtime end
+          end
+
+          begin
+            $worker_manager = _WorkerManagerImpl.new(servlet_context)
+            $worker_manager.exported = false # already set $worker_manager
+            $worker_manager.logger = org.jruby.rack.logging.StandardOutLogger.new
+
+            worker = mock('worker'); worker.expects(:start)
+            Delayed::Threaded::Worker.expects(:new).with(:quiet => false, :sleep_delay => 1.5).returns(worker)
+
+            $worker_manager.startup
+
+            sleep 0.5 # TODO await for worker-thread
+            assert_equal ['foo'], Delayed::Worker.queues
+          ensure
+            $worker_manager.shutdown if $worker_manager
+            $worker_manager = nil
+          end
         end
 
       end
