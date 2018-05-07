@@ -195,7 +195,7 @@ module Delayed
           worker = Delayed::JRubyWorker.new({ :sleep_delay => 0.12 })
           Delayed::Job.enqueue job = TestJob.new(:huu)
           Thread.start { Thread.current.abort_on_exception = true; worker.start }
-          sleep(0.20)
+          sleep(0.25)
           assert ! worker.stop?
 
           assert_equal :huu, TestJob.send(:class_variable_get, :'@@performed')
@@ -242,6 +242,17 @@ module Delayed
             $worker_manager = nil
           end
         end
+
+        # test "runs" do
+        #   worker = Delayed::JRubyWorker.new
+        #   worker.stubs(:thread_count).returns 2
+        #   Thread.new { worker.start }
+        #   worker = Delayed::JRubyWorker.new
+        #   worker.stubs(:thread_count).returns 2
+        #   Thread.new { worker.start }
+        #
+        #   sleep 1000
+        # end
 
       end
 
